@@ -330,7 +330,7 @@
     border-color:var(--line-strong);
   }
   .drill-list{ display:flex; flex-direction:column; gap:6px; max-height:0; overflow:hidden; transition:max-height .25s ease; }
-  .drill-list.open{ max-height:640px; }
+  .drill-list.open{ max-height:60vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .drill-item{
     text-align:left;
     background:transparent;
@@ -505,9 +505,102 @@
   .status-line{ font-size:12px; color:var(--cream-faint); margin-top:10px; line-height:1.5; }
 
   footer{ text-align:center; color:var(--cream-faint); font-size:11px; margin-top:8px; opacity:.7; }
+
+  /* ---------- pull to refresh ---------- */
+  .pull-indicator{
+    position:fixed;
+    top:var(--safe-top);
+    left:0; right:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    height:0;
+    overflow:visible;
+    color:var(--cream-dim);
+    font-size:12px;
+    transform:translateY(-46px);
+    opacity:0;
+    z-index:60;
+    pointer-events:none;
+    transition:opacity .12s linear;
+  }
+  .pull-indicator svg{ width:17px; height:17px; transition:transform .15s; flex-shrink:0; }
+  .pull-indicator.ready svg{ transform:rotate(180deg); }
+  .pull-indicator.ready{ color:var(--amber); }
+  .pull-indicator.loading svg{ animation:pull-spin .7s linear infinite; }
+  .pull-indicator.loading{ transform:translateY(4px); opacity:1; transition:none; }
+  @keyframes pull-spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- drill browser (search + responsive layout) ---------- */
+  .drill-search-input{
+    width:100%;
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--cream);
+    padding:9px 11px;
+    font-family:inherit;
+    font-size:13px;
+    margin-bottom:10px;
+  }
+  .drill-search-input::placeholder{ color:var(--cream-faint); }
+  .drill-search-input:focus{ outline:none; border-color:var(--amber-line); }
+  .item-cat{
+    display:inline-block;
+    font-size:9.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--amber);
+    background:var(--amber-soft);
+    border-radius:5px;
+    padding:2px 6px;
+    margin-right:6px;
+    vertical-align:middle;
+  }
+  .drill-count{ font-weight:400; color:var(--cream-faint); }
+
+  @media (min-width:720px){
+    .app{ max-width:960px; }
+    .stat-row{ gap:14px; }
+    .panel{ padding:22px 24px; }
+    .drill-browser{
+      display:grid;
+      grid-template-columns:190px 1fr;
+      gap:22px;
+      align-items:start;
+    }
+    .cat-tabs{
+      flex-direction:column;
+      overflow:visible;
+      padding-bottom:0;
+      margin:0;
+      gap:5px;
+    }
+    .cat-tab{ width:100%; text-align:left; }
+    .drill-list.open{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+      gap:10px;
+      max-height:none;
+      overflow:visible;
+      align-content:start;
+    }
+    .timer-panel{ max-width:420px; margin:0 auto; }
+  }
+
+  @media (min-width:960px){
+    .app{ max-width:1080px; }
+  }
 </style>
 </head>
 <body>
+
+<div class="pull-indicator" id="pullIndicator">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+  <span id="pullLabel">Pull to refresh</span>
+</div>
 
 <div class="app">
 
@@ -573,9 +666,12 @@
 
   <!-- ===== DRILL PICKER ===== -->
   <div class="panel">
-    <div class="panel-title">Browse drills</div>
-    <div class="cat-tabs" id="catTabs"></div>
-    <div class="drill-list open" id="drillList"></div>
+    <div class="panel-title">Browse drills <span class="drill-count num" id="drillCount"></span></div>
+    <input type="text" class="drill-search-input" id="drillSearch" placeholder="Search drills by name or description…" autocomplete="off">
+    <div class="drill-browser">
+      <div class="cat-tabs" id="catTabs"></div>
+      <div class="drill-list open" id="drillList"></div>
+    </div>
   </div>
 
   <!-- ===== TODAY / STREAK ===== -->
@@ -701,6 +797,7 @@ let fb = { app:null, db:null, ready:false };
    Curriculum lives in ./drills.js, not here — see that file to add/edit drills.
    ========================================================================= */
 const CATEGORIES = [...new Set(DRILLS.map(d => d.cat))];
+const ALL_CAT = "All";
 
 /* =========================================================================
    STATE
@@ -791,22 +888,56 @@ function renderDrillCurrent(){
 function renderCatTabs(){
   const wrap = document.getElementById("catTabs");
   wrap.innerHTML = "";
-  CATEGORIES.forEach(cat => {
+  [ALL_CAT, ...CATEGORIES].forEach(cat => {
     const btn = document.createElement("button");
     btn.className = "cat-tab" + (cat === activeCat ? " active" : "");
     btn.textContent = cat;
-    btn.onclick = () => { activeCat = cat; renderCatTabs(); renderDrillList(); };
+    btn.onclick = () => {
+      activeCat = cat;
+      const search = document.getElementById("drillSearch");
+      if (search) search.value = "";
+      renderCatTabs();
+      renderDrillList();
+    };
     wrap.appendChild(btn);
   });
 }
 
 function renderDrillList(){
   const wrap = document.getElementById("drillList");
+  const countEl = document.getElementById("drillCount");
   wrap.innerHTML = "";
-  DRILLS.filter(d => d.cat === activeCat).forEach(d => {
+
+  const q = (document.getElementById("drillSearch")?.value || "").trim().toLowerCase();
+  let list;
+  let showCatBadge = false;
+
+  if (q){
+    list = DRILLS.filter(d =>
+      d.name.toLowerCase().includes(q) ||
+      d.desc.toLowerCase().includes(q) ||
+      d.cat.toLowerCase().includes(q)
+    );
+    showCatBadge = true;
+  } else if (activeCat === ALL_CAT){
+    list = DRILLS;
+    showCatBadge = true;
+  } else {
+    list = DRILLS.filter(d => d.cat === activeCat);
+  }
+
+  if (countEl) countEl.textContent = q || activeCat === ALL_CAT ? `${list.length}` : "";
+
+  if (!list.length){
+    wrap.innerHTML = `<div class="empty-hint">No drills match "${escapeHtml(q)}".</div>`;
+    return;
+  }
+
+  list.forEach(d => {
     const item = document.createElement("button");
     item.className = "drill-item" + (d.name === currentDrill.name ? " selected" : "");
-    item.innerHTML = `<div class="name">${d.name}${d.bpm ? ` <span class="num" style="color:var(--cream-faint);font-size:11px;">· ${d.bpm} bpm</span>` : ""}</div><div class="desc">${d.desc}</div>`;
+    const catBadge = showCatBadge ? `<span class="item-cat">${escapeHtml(d.cat)}</span>` : "";
+    item.innerHTML = `<div class="name">${catBadge}${escapeHtml(d.name)}${d.bpm ? ` <span class="num" style="color:var(--cream-faint);font-size:11px;">· ${d.bpm} bpm</span>` : ""}</div><div class="desc">${escapeHtml(d.desc)}</div>`;
     item.onclick = () => { setDrill(d); };
     wrap.appendChild(item);
   });
@@ -825,6 +956,8 @@ document.getElementById("shuffleBtn").onclick = () => {
   const pool = DRILLS.filter(d => d.name !== currentDrill.name);
   setDrill(pool[Math.floor(Math.random() * pool.length)]);
 };
+
+document.getElementById("drillSearch").addEventListener("input", renderDrillList);
 
 /* =========================================================================
    TIMER
@@ -1385,6 +1518,83 @@ async function saveUserMeta(){
     await setDoc(settingsDocRef, { dailyGoalMin }, { merge:true });
   } catch(e){ console.error(e); }
 }
+
+/* =========================================================================
+   PULL TO REFRESH
+   Standalone/home-screen mode (and body{overscroll-behavior-y:none}) means
+   there's no native pull-to-refresh gesture, so this reloads the page —
+   handy for picking up a fresh copy without force-quitting the app.
+   ========================================================================= */
+(function initPullToRefresh(){
+  const indicator = document.getElementById("pullIndicator");
+  const label = document.getElementById("pullLabel");
+  if (!indicator || !label) return;
+
+  const TRIGGER_PX = 68;
+  let startY = null;
+  let pulling = false;
+  let refreshing = false;
+
+  function scrollTopAmount(){
+    return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  }
+
+  function resetIndicator(){
+    indicator.style.transition = "";
+    indicator.style.transform = "translateY(-46px)";
+    indicator.style.opacity = "0";
+    indicator.classList.remove("ready");
+  }
+
+  document.addEventListener("touchstart", (e) => {
+    if (refreshing) return;
+    if (scrollTopAmount() <= 0 && e.touches.length === 1){
+      startY = e.touches[0].clientY;
+      pulling = true;
+      indicator.style.transition = "";
+    } else {
+      startY = null;
+      pulling = false;
+    }
+  }, { passive:true });
+
+  document.addEventListener("touchmove", (e) => {
+    if (!pulling || startY === null || refreshing) return;
+    const delta = e.touches[0].clientY - startY;
+    if (delta <= 0 || scrollTopAmount() > 0){
+      pulling = false;
+      resetIndicator();
+      return;
+    }
+    const pull = Math.min(delta * 0.5, 100);
+    indicator.style.transform = `translateY(${pull - 46}px)`;
+    indicator.style.opacity = Math.min(pull / TRIGGER_PX, 1).toFixed(2);
+    const ready = pull >= TRIGGER_PX;
+    indicator.classList.toggle("ready", ready);
+    label.textContent = ready ? "Release to refresh" : "Pull to refresh";
+    if (delta > 8) e.preventDefault();
+  }, { passive:false });
+
+  document.addEventListener("touchend", () => {
+    if (!pulling || refreshing) { pulling = false; return; }
+    pulling = false;
+    if (indicator.classList.contains("ready")){
+      refreshing = true;
+      label.textContent = "Refreshing…";
+      indicator.classList.add("loading");
+      indicator.classList.remove("ready");
+      setTimeout(() => location.reload(), 200);
+    } else {
+      indicator.style.transition = "transform .18s ease, opacity .18s ease";
+      resetIndicator();
+    }
+  });
+
+  document.addEventListener("touchcancel", () => {
+    pulling = false;
+    if (!refreshing) resetIndicator();
+  });
+})();
 
 /* =========================================================================
    BOOT
