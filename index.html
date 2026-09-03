@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Practice</title>
+
+<!-- iOS home-screen app behavior -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Practice">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1c120c">
+<meta name="format-detection" content="telephone=no">
+
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg-0:#1c120c;
+    --bg-1:#2b1d14;
+    --bg-2:#3a2717;
+    --bg-2-hover:#43301d;
+    --cream:#ede1ce;
+    --cream-dim:#c9b99e;
+    --cream-faint:#96876f;
+    --amber:#e8963c;
+    --amber-soft:rgba(232,150,60,.16);
+    --amber-line:rgba(232,150,60,.4);
+    --red:#c4573f;
+    --red-soft:rgba(196,87,63,.18);
+    --green:#8fa876;
+    --green-soft:rgba(143,168,118,.18);
+    --line:rgba(237,225,206,.1);
+    --line-strong:rgba(237,225,206,.18);
+    --radius:14px;
+    --safe-top:env(safe-area-inset-top);
+    --safe-bottom:env(safe-area-inset-bottom);
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:linear-gradient(180deg,#2f2016 0%, var(--bg-0) 55%);
+    background-attachment:fixed;
+    color:var(--cream);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:none;
+  }
+
+  .num{ font-family:"Space Mono", ui-monospace, monospace; }
+  .display{ font-family:"Fraunces", Georgia, serif; }
+
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    padding:calc(20px + var(--safe-top)) 18px calc(28px + var(--safe-bottom));
+    min-height:100%;
+  }
+
+  /* ---------- header ---------- */
+  header.top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    margin-bottom:22px;
+  }
+  .top .wordmark{
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:.2px;
+  }
+  .top .date-line{
+    color:var(--cream-faint);
+    font-size:13px;
+    margin-top:3px;
+  }
+  .top-actions{ display:flex; align-items:center; gap:10px; }
+  .streak-badge{
+    display:flex; align-items:center; gap:5px;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:6px 11px 6px 9px;
+    font-size:13px;
+    color:var(--cream-dim);
+  }
+  .streak-badge .flame{ color:var(--amber); font-size:14px; }
+  .streak-badge b{ color:var(--cream); font-family:"Space Mono",monospace; font-weight:700; }
+  .icon-btn{
+    width:34px; height:34px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:999px;
+    color:var(--cream-dim);
+    cursor:pointer;
+  }
+  .icon-btn svg{ width:16px; height:16px; }
+  .sync-dot{
+    position:absolute;
+    width:8px; height:8px;
+    border-radius:50%;
+    background:var(--green);
+    top:-1px; right:-1px;
+    border:2px solid var(--bg-0);
+  }
+  .sync-dot.offline{ background:var(--cream-faint); }
+  .icon-btn-wrap{ position:relative; }
+
+  /* ---------- panel base ---------- */
+  .panel{
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:14px;
+    position:relative;
+  }
+  .panel-title{
+    font-size:12px;
+    color:var(--cream-faint);
+    margin:0 0 12px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+
+  /* screw accents — used once, on the hero timer panel only */
+  .screw{
+    position:absolute;
+    width:5px; height:5px;
+    border-radius:50%;
+    background:rgba(0,0,0,.35);
+    box-shadow:0 1px 0 rgba(237,225,206,.15);
+  }
+
+  /* ---------- timer hero ---------- */
+  .timer-panel{
+    text-align:center;
+    padding:26px 18px 20px;
+  }
+  .ring-wrap{
+    position:relative;
+    width:220px; height:220px;
+    margin:4px auto 6px;
+  }
+  .ring-wrap svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .ring-track{ fill:none; stroke:var(--bg-2); stroke-width:10; }
+  .ring-progress{
+    fill:none;
+    stroke:var(--amber);
+    stroke-width:10;
+    stroke-linecap:round;
+    transition:stroke-dashoffset .3s linear, stroke .3s;
+  }
+  .ring-progress.overflow{ stroke:var(--green); }
+  .ring-center{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+  }
+  .rec-dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--cream-faint);
+    margin-bottom:8px;
+  }
+  .rec-dot.live{
+    background:var(--red);
+    box-shadow:0 0 0 4px var(--red-soft);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ box-shadow:0 0 0 4px var(--red-soft); }
+    50%{ box-shadow:0 0 0 8px transparent; }
+  }
+  .time-display{
+    font-size:40px;
+    font-weight:700;
+    letter-spacing:.5px;
+    line-height:1;
+  }
+  .time-target{
+    font-size:12px;
+    color:var(--cream-faint);
+    margin-top:6px;
+  }
+
+  .target-row{
+    display:flex; gap:7px; justify-content:center;
+    margin:14px 0 18px;
+  }
+  .target-chip{
+    background:var(--bg-2);
+    border:1px solid transparent;
+    color:var(--cream-dim);
+    font-size:12px;
+    padding:6px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:"Space Mono",monospace;
+  }
+  .target-chip.active{
+    border-color:var(--amber-line);
+    color:var(--amber);
+    background:var(--amber-soft);
+  }
+
+  .transport{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+  }
+  .btn-primary{
+    background:var(--amber);
+    color:#1c120c;
+    border:none;
+    font-size:16px;
+    font-weight:700;
+    padding:15px 34px;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-primary:active{ transform:scale(.97); }
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--line-strong);
+    color:var(--cream-dim);
+    font-size:14px;
+    padding:14px 20px;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-stop{
+    background:var(--red-soft);
+    border:1px solid rgba(196,87,63,.4);
+    color:#e6a894;
+    font-size:14px;
+    padding:14px 20px;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+
+  /* ---------- drill card ---------- */
+  .drill-current{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    background:var(--bg-2);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-top:2px;
+  }
+  .drill-current .cat{
+    font-size:11px;
+    color:var(--amber);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    margin-bottom:4px;
+  }
+  .drill-current .name{ font-size:15px; font-weight:600; }
+  .drill-current .desc{ font-size:12.5px; color:var(--cream-dim); margin-top:4px; line-height:1.4; }
+  .shuffle-btn{
+    flex-shrink:0;
+    width:32px; height:32px;
+    border-radius:50%;
+    border:1px solid var(--line-strong);
+    background:transparent;
+    color:var(--cream-dim);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .shuffle-btn svg{ width:15px; height:15px; }
+
+  .cat-tabs{
+    display:flex; gap:6px; overflow-x:auto;
+    padding-bottom:2px; margin:14px 0 10px;
+    scrollbar-width:none;
+  }
+  .cat-tabs::-webkit-scrollbar{ display:none; }
+  .cat-tab{
+    flex-shrink:0;
+    font-size:12px;
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--cream-faint);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .cat-tab.active{
+    background:var(--bg-2);
+    color:var(--cream);
+    border-color:var(--line-strong);
+  }
+  .drill-list{ display:flex; flex-direction:column; gap:6px; max-height:0; overflow:hidden; transition:max-height .25s ease; }
+  .drill-list.open{ max-height:640px; }
+  .drill-item{
+    text-align:left;
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    color:var(--cream);
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .drill-item.selected{ border-color:var(--amber-line); background:var(--amber-soft); }
+  .drill-item .name{ font-size:13.5px; font-weight:600; }
+  .drill-item .desc{ font-size:12px; color:var(--cream-faint); margin-top:2px; line-height:1.4; }
+
+  /* ---------- progress + week ---------- */
+  .stat-row{ display:flex; gap:10px; margin-bottom:14px; }
+  .stat-box{
+    flex:1;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px;
+  }
+  .stat-box .val{ font-size:22px; font-weight:700; font-family:"Space Mono",monospace; }
+  .stat-box .lbl{ font-size:11px; color:var(--cream-faint); margin-top:3px; }
+
+  .week-chart{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    height:90px;
+    margin:6px 4px 4px;
+  }
+  .week-col{ display:flex; flex-direction:column; align-items:center; gap:6px; width:13%; }
+  .week-bar-track{ width:100%; height:60px; display:flex; align-items:flex-end; }
+  .week-bar{
+    width:100%;
+    background:var(--bg-2);
+    border-radius:4px;
+    min-height:3px;
+    position:relative;
+  }
+  .week-bar.hit{ background:var(--amber); }
+  .week-bar.today{ box-shadow:0 0 0 1px var(--amber-line) inset; }
+  .week-day-lbl{ font-size:10.5px; color:var(--cream-faint); }
+
+  /* ---------- metronome ---------- */
+  .metro-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; }
+  .metro-bpm{ display:flex; align-items:center; gap:10px; }
+  .metro-bpm .bpm-num{ font-size:30px; font-weight:700; min-width:64px; text-align:center; }
+  .stepper{
+    width:34px; height:34px;
+    border-radius:50%;
+    border:1px solid var(--line-strong);
+    background:transparent;
+    color:var(--cream);
+    font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .metro-actions{ display:flex; gap:8px; }
+  .metro-toggle{
+    width:44px; height:44px;
+    border-radius:50%;
+    border:none;
+    background:var(--bg-2);
+    color:var(--cream);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .metro-toggle.on{ background:var(--amber); color:#1c120c; }
+  .metro-toggle svg{ width:16px; height:16px; }
+  .tap-btn{
+    font-size:11px;
+    color:var(--cream-faint);
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 10px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .metro-beat{
+    display:flex; gap:5px; justify-content:center; margin-top:12px;
+  }
+  .beat-dot{ width:7px; height:7px; border-radius:50%; background:var(--bg-2); }
+  .beat-dot.active{ background:var(--amber); }
+
+  /* ---------- history ---------- */
+  .session-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:11px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .session-row:last-child{ border-bottom:none; }
+  .session-row .left .name{ font-size:13.5px; font-weight:600; }
+  .session-row .left .meta{ font-size:11.5px; color:var(--cream-faint); margin-top:2px; }
+  .session-row .dur{ font-family:"Space Mono",monospace; font-size:14px; color:var(--cream-dim); }
+  .empty-hint{ font-size:13px; color:var(--cream-faint); line-height:1.5; padding:6px 2px; }
+
+  /* ---------- save sheet ---------- */
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(10,6,4,.6);
+    display:none; align-items:flex-end; justify-content:center;
+    z-index:50;
+  }
+  .sheet-backdrop.open{ display:flex; }
+  .sheet{
+    width:100%; max-width:480px;
+    background:var(--bg-1);
+    border:1px solid var(--line-strong);
+    border-bottom:none;
+    border-radius:20px 20px 0 0;
+    padding:20px 18px calc(22px + var(--safe-bottom));
+  }
+  .sheet h3{ margin:0 0 4px; font-size:17px; }
+  .sheet .sheet-sub{ font-size:12.5px; color:var(--cream-faint); margin-bottom:16px; }
+  .sheet textarea{
+    width:100%;
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--cream);
+    padding:11px 12px;
+    font-family:inherit;
+    font-size:14px;
+    resize:none;
+    min-height:64px;
+    margin-bottom:14px;
+  }
+  .sheet-actions{ display:flex; gap:10px; }
+  .sheet-actions .btn-primary{ flex:1; }
+  .sheet-actions .btn-ghost{ flex:0 0 auto; }
+
+  /* ---------- settings sheet ---------- */
+  .field-row{ display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line); }
+  .field-row:last-of-type{ border-bottom:none; }
+  .field-row .lbl{ font-size:14px; }
+  .field-row .sub{ font-size:11.5px; color:var(--cream-faint); margin-top:2px; }
+  .goal-input{
+    width:64px; background:var(--bg-2); border:1px solid var(--line);
+    border-radius:8px; color:var(--cream); font-family:"Space Mono",monospace;
+    font-size:14px; padding:8px; text-align:center;
+  }
+  .link-btn{
+    background:var(--bg-2); border:1px solid var(--line-strong); color:var(--cream);
+    font-size:13px; padding:10px 14px; border-radius:10px; cursor:pointer; font-family:inherit;
+    width:100%; margin-top:6px;
+  }
+  .status-line{ font-size:12px; color:var(--cream-faint); margin-top:10px; line-height:1.5; }
+
+  footer{ text-align:center; color:var(--cream-faint); font-size:11px; margin-top:8px; opacity:.7; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="top">
+    <div>
+      <div class="wordmark display">Practice</div>
+      <div class="date-line" id="dateLine">—</div>
+    </div>
+    <div class="top-actions">
+      <div class="streak-badge"><span class="flame">●</span><b id="streakNum">0</b> day streak</div>
+      <div class="icon-btn-wrap">
+        <button class="icon-btn" id="settingsBtn" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <div class="sync-dot offline" id="syncDot"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== TIMER ===== -->
+  <div class="panel timer-panel">
+    <span class="screw" style="top:12px; left:12px;"></span>
+    <span class="screw" style="top:12px; right:12px;"></span>
+    <span class="screw" style="bottom:12px; left:12px;"></span>
+    <span class="screw" style="bottom:12px; right:12px;"></span>
+
+    <div class="ring-wrap">
+      <svg viewBox="0 0 220 220">
+        <circle class="ring-track" cx="110" cy="110" r="96"/>
+        <circle class="ring-progress" id="ringProgress" cx="110" cy="110" r="96" stroke-dasharray="603" stroke-dashoffset="603"/>
+      </svg>
+      <div class="ring-center">
+        <div class="rec-dot" id="recDot"></div>
+        <div class="time-display num" id="timeDisplay">00:00</div>
+        <div class="time-target" id="timeTarget">goal 30:00</div>
+      </div>
+    </div>
+
+    <div class="target-row" id="targetRow">
+      <button class="target-chip" data-min="5">5m</button>
+      <button class="target-chip" data-min="15">15m</button>
+      <button class="target-chip active" data-min="30">30m</button>
+      <button class="target-chip" data-min="60">60m</button>
+    </div>
+
+    <div class="transport" id="transport">
+      <button class="btn-primary" id="startBtn">Start practicing</button>
+    </div>
+
+    <div class="drill-current" id="drillCurrent" style="margin-top:18px;">
+      <div>
+        <div class="cat" id="drillCat">Scales & shapes</div>
+        <div class="name" id="drillName">—</div>
+        <div class="desc" id="drillDesc">—</div>
+      </div>
+      <button class="shuffle-btn" id="shuffleBtn" aria-label="Shuffle drill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== DRILL PICKER ===== -->
+  <div class="panel">
+    <div class="panel-title">Browse drills</div>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="drill-list open" id="drillList"></div>
+  </div>
+
+  <!-- ===== TODAY / STREAK ===== -->
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="val num" id="todayMin">0<span style="font-size:13px;color:var(--cream-faint);">m</span></div>
+      <div class="lbl">today</div>
+    </div>
+    <div class="stat-box">
+      <div class="val num" id="weekMin">0<span style="font-size:13px;color:var(--cream-faint);">m</span></div>
+      <div class="lbl">this week</div>
+    </div>
+    <div class="stat-box">
+      <div class="val num" id="totalSessions">0</div>
+      <div class="lbl">sessions logged</div>
+    </div>
+  </div>
+
+  <!-- ===== WEEK CHART ===== -->
+  <div class="panel">
+    <div class="panel-title">Last 7 days</div>
+    <div class="week-chart" id="weekChart"></div>
+  </div>
+
+  <!-- ===== METRONOME ===== -->
+  <div class="panel">
+    <div class="panel-title">Metronome</div>
+    <div class="metro-row">
+      <div class="metro-bpm">
+        <button class="stepper" id="bpmDown">–</button>
+        <div class="bpm-num num" id="bpmNum">82</div>
+        <button class="stepper" id="bpmUp">+</button>
+      </div>
+      <div class="metro-actions">
+        <button class="tap-btn" id="tapBtn">tap tempo</button>
+        <button class="metro-toggle" id="metroToggle" aria-label="Start metronome">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="metro-beat" id="metroBeat"></div>
+  </div>
+
+  <!-- ===== HISTORY ===== -->
+  <div class="panel">
+    <div class="panel-title">Recent sessions</div>
+    <div id="historyList">
+      <div class="empty-hint">No sessions yet — hit start above whenever you've got a few minutes. Even five counts.</div>
+    </div>
+  </div>
+
+  <footer>Practice tracker · stored privately to your account</footer>
+</div>
+
+<!-- ===== SAVE SESSION SHEET ===== -->
+<div class="sheet-backdrop" id="saveBackdrop">
+  <div class="sheet">
+    <h3 class="display">Nice work</h3>
+    <div class="sheet-sub" id="saveSummary">12 minutes on Pentatonic shape 1 → 4</div>
+    <textarea id="noteInput" placeholder="Anything worth remembering? (optional)"></textarea>
+    <div class="sheet-actions">
+      <button class="btn-ghost" id="discardBtn">Discard</button>
+      <button class="btn-primary" id="saveBtn">Save session</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS SHEET ===== -->
+<div class="sheet-backdrop" id="settingsBackdrop">
+  <div class="sheet">
+    <h3 class="display">Settings</h3>
+    <div class="field-row">
+      <div>
+        <div class="lbl">Daily goal</div>
+        <div class="sub">Used for the progress ring</div>
+      </div>
+      <input type="number" class="goal-input" id="goalInput" value="30" min="5" max="180" step="5">
+    </div>
+    <div class="field-row">
+      <div style="width:100%;">
+        <div class="lbl">Sync across devices</div>
+        <div class="sub">Currently saving to this device only</div>
+        <button class="link-btn" id="googleSyncBtn">Sign in with Google</button>
+      </div>
+    </div>
+    <div class="field-row">
+      <div style="width:100%;">
+        <div class="lbl">Data</div>
+        <button class="link-btn" id="exportBtn">Export sessions as JSON</button>
+      </div>
+    </div>
+    <div class="status-line" id="statusLine">Local-only mode — add your Firebase config in index.html to sync.</div>
+    <div class="sheet-actions" style="margin-top:16px;">
+      <button class="btn-primary" id="closeSettingsBtn" style="flex:1;">Done</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* =========================================================================
+   FIREBASE CONFIG
+   Paste your Firebase project config below. Until apiKey is filled in,
+   the app runs fully functional in local-only mode (data stays in this
+   browser via localStorage). See the setup instructions doc for how to
+   create a project and fill this in.
+   ========================================================================= */
+const firebaseConfig = {
+  apiKey: "REPLACE_ME",
+  authDomain: "REPLACE_ME.firebaseapp.com",
+  projectId: "REPLACE_ME",
+  storageBucket: "REPLACE_ME.appspot.com",
+  messagingSenderId: "REPLACE_ME",
+  appId: "REPLACE_ME"
+};
+
+const FIREBASE_ENABLED = firebaseConfig.apiKey && firebaseConfig.apiKey !== "REPLACE_ME";
+
+let fb = { app:null, auth:null, db:null, user:null, ready:false };
+
+/* =========================================================================
+   DRILL LIBRARY
+   ========================================================================= */
+const DRILLS = [
+  { cat:"Scales & shapes", name:"Shape 1 → Shape 4 connector", desc:"Slide cleanly between minor pentatonic shape 1 and shape 4, ascending and descending. Start at 82 bpm.", bpm:82 },
+  { cat:"Scales & shapes", name:"Diagonal shifts", desc:"Link shapes 1 through 5 diagonally up the neck in one continuous run, one octave per shift.", bpm:76 },
+  { cat:"Scales & shapes", name:"Five shapes, one key", desc:"Cycle through all five pentatonic shapes on a single string set without stopping.", bpm:80 },
+  { cat:"Scales & shapes", name:"Major/minor swap", desc:"Same shape, same root — toggle between major and minor pentatonic and listen for the difference.", bpm:78 },
+  { cat:"Improvisation", name:"Solo over I–IV–V", desc:"Loop a I–IV–V backing track on the Spark Go and solo, prioritizing phrasing over speed.", bpm:null },
+  { cat:"Improvisation", name:"Call and response", desc:"Play a two-bar lick, then answer it — treat it like a conversation, not a scale run.", bpm:null },
+  { cat:"Improvisation", name:"One-string solo", desc:"Improvise using only the high E string. Forces melodic thinking over shape memory.", bpm:null },
+  { cat:"Improvisation", name:"Target the chord tones", desc:"Improvise through a progression, landing deliberately on the 3rd or 7th at each chord change.", bpm:null },
+  { cat:"Repertoire", name:"Autumn Leaves — head", desc:"Play the melody clean and in time, then try comping through the changes once through.", bpm:null },
+  { cat:"Repertoire", name:"Autumn Leaves — ii–V–I", desc:"Isolate the ii–V–I movements in the tune and get comfortable moving between them.", bpm:null },
+  { cat:"Repertoire", name:"Mayer-style groove", desc:"Palm-muted rhythm pocket, then layer in a clean lead line over the top.", bpm:null },
+  { cat:"Repertoire", name:"Neo-soul voicings", desc:"Work through 9th/11th/13th chord voicings with smooth voice leading between changes.", bpm:null },
+  { cat:"Technique", name:"Alternate picking ladder", desc:"Metronome on, start slow and clean, add 4 bpm each clean pass through.", bpm:70 },
+  { cat:"Technique", name:"String skipping", desc:"Clean jumps across non-adjacent strings without brushing the ones in between.", bpm:72 },
+  { cat:"Technique", name:"Legato run", desc:"Hammer-ons and pull-offs through a full pentatonic shape — no picking hand at all.", bpm:75 },
+  { cat:"Technique", name:"Strat setup check", desc:"Quick weekly check-in: action, intonation, string freshness on the Squier.", bpm:null },
+  { cat:"Ear training", name:"Sing then play", desc:"Sing a short phrase from memory, then find it on the fretboard by ear.", bpm:null },
+  { cat:"Ear training", name:"Transcribe 4 bars", desc:"Pick four bars from a favorite track and work it out entirely by ear.", bpm:null },
+];
+const CATEGORIES = [...new Set(DRILLS.map(d => d.cat))];
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const LS_SESSIONS = "gp_sessions";
+const LS_TIMER = "gp_timer_state";
+const LS_GOAL = "gp_daily_goal_min";
+const LS_DRILL = "gp_current_drill";
+const LS_BPM = "gp_bpm";
+
+let sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || "[]");
+let dailyGoalMin = parseInt(localStorage.getItem(LS_GOAL) || "30", 10);
+let targetMin = dailyGoalMin;
+let currentDrill = JSON.parse(localStorage.getItem(LS_DRILL) || "null") || DRILLS[0];
+let activeCat = currentDrill.cat;
+
+let timer = JSON.parse(localStorage.getItem(LS_TIMER) || "null") || {
+  state: "idle", startedAt: null, accumulatedMs: 0
+};
+let tickHandle = null;
+let pendingElapsedMs = 0;
+
+/* =========================================================================
+   UTIL
+   ========================================================================= */
+function pad(n){ return n.toString().padStart(2, "0"); }
+function fmtClock(ms){
+  const totalSec = Math.floor(ms/1000);
+  const h = Math.floor(totalSec/3600);
+  const m = Math.floor((totalSec%3600)/60);
+  const s = totalSec%60;
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
+function todayKey(d = new Date()){
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function persistSessions(){ localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions.slice(0, 500))); }
+function persistTimer(){ localStorage.setItem(LS_TIMER, JSON.stringify(timer)); }
+
+/* =========================================================================
+   RENDER: header / date / streak
+   ========================================================================= */
+function renderHeader(){
+  const d = new Date();
+  document.getElementById("dateLine").textContent = d.toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" });
+  document.getElementById("streakNum").textContent = computeStreak();
+}
+
+function computeStreak(){
+  const days = new Set(sessions.map(s => todayKey(new Date(s.startedAt))));
+  let streak = 0;
+  let cursor = new Date();
+  if (!days.has(todayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(todayKey(cursor))){
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+/* =========================================================================
+   RENDER: drills
+   ========================================================================= */
+function renderDrillCurrent(){
+  document.getElementById("drillCat").textContent = currentDrill.cat;
+  document.getElementById("drillName").textContent = currentDrill.name;
+  document.getElementById("drillDesc").textContent = currentDrill.desc;
+  renderDrillList();
+}
+
+function renderCatTabs(){
+  const wrap = document.getElementById("catTabs");
+  wrap.innerHTML = "";
+  CATEGORIES.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "cat-tab" + (cat === activeCat ? " active" : "");
+    btn.textContent = cat;
+    btn.onclick = () => { activeCat = cat; renderCatTabs(); renderDrillList(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderDrillList(){
+  const wrap = document.getElementById("drillList");
+  wrap.innerHTML = "";
+  DRILLS.filter(d => d.cat === activeCat).forEach(d => {
+    const item = document.createElement("button");
+    item.className = "drill-item" + (d.name === currentDrill.name ? " selected" : "");
+    item.innerHTML = `<div class="name">${d.name}${d.bpm ? ` <span class="num" style="color:var(--cream-faint);font-size:11px;">· ${d.bpm} bpm</span>` : ""}</div><div class="desc">${d.desc}</div>`;
+    item.onclick = () => { setDrill(d); };
+    wrap.appendChild(item);
+  });
+}
+
+function setDrill(d){
+  currentDrill = d;
+  activeCat = d.cat;
+  localStorage.setItem(LS_DRILL, JSON.stringify(d));
+  if (d.bpm) setBpm(d.bpm);
+  renderDrillCurrent();
+  renderCatTabs();
+}
+
+document.getElementById("shuffleBtn").onclick = () => {
+  const pool = DRILLS.filter(d => d.name !== currentDrill.name);
+  setDrill(pool[Math.floor(Math.random() * pool.length)]);
+};
+
+/* =========================================================================
+   TIMER
+   ========================================================================= */
+const ringEl = document.getElementById("ringProgress");
+const RING_CIRCUM = 2 * Math.PI * 96;
+ringEl.setAttribute("stroke-dasharray", RING_CIRCUM.toFixed(1));
+
+function currentElapsedMs(){
+  if (timer.state === "running"){
+    return timer.accumulatedMs + (Date.now() - timer.startedAt);
+  }
+  return timer.accumulatedMs;
+}
+
+function renderTimer(){
+  const elapsed = currentElapsedMs();
+  document.getElementById("timeDisplay").textContent = fmtClock(elapsed);
+  document.getElementById("timeTarget").textContent = `goal ${targetMin}:00`;
+
+  const frac = Math.min(elapsed / (targetMin * 60 * 1000), 1);
+  const offset = RING_CIRCUM * (1 - frac);
+  ringEl.setAttribute("stroke-dashoffset", offset.toFixed(1));
+  ringEl.classList.toggle("overflow", frac >= 1);
+
+  document.getElementById("recDot").classList.toggle("live", timer.state === "running");
+
+  renderTransport();
+}
+
+function renderTransport(){
+  const wrap = document.getElementById("transport");
+  if (timer.state === "idle"){
+    wrap.innerHTML = `<button class="btn-primary" id="startBtn">Start practicing</button>`;
+    document.getElementById("startBtn").onclick = startTimer;
+  } else if (timer.state === "running"){
+    wrap.innerHTML = `<button class="btn-ghost" id="pauseBtn">Pause</button><button class="btn-stop" id="stopBtn">Finish</button>`;
+    document.getElementById("pauseBtn").onclick = pauseTimer;
+    document.getElementById("stopBtn").onclick = finishTimer;
+  } else if (timer.state === "paused"){
+    wrap.innerHTML = `<button class="btn-primary" id="resumeBtn">Resume</button><button class="btn-stop" id="stopBtn">Finish</button>`;
+    document.getElementById("resumeBtn").onclick = startTimer;
+    document.getElementById("stopBtn").onclick = finishTimer;
+  }
+}
+
+function startTimer(){
+  timer.state = "running";
+  timer.startedAt = Date.now();
+  persistTimer();
+  ensureTick();
+  renderTimer();
+}
+
+function pauseTimer(){
+  timer.accumulatedMs = currentElapsedMs();
+  timer.state = "paused";
+  timer.startedAt = null;
+  persistTimer();
+  stopTick();
+  renderTimer();
+}
+
+function finishTimer(){
+  const elapsedMs = currentElapsedMs();
+  stopTick();
+  pendingElapsedMs = elapsedMs;
+  timer = { state:"idle", startedAt:null, accumulatedMs:0 };
+  persistTimer();
+  renderTimer();
+  openSaveSheet(elapsedMs);
+}
+
+function ensureTick(){
+  if (tickHandle) return;
+  tickHandle = setInterval(renderTimer, 500);
+}
+function stopTick(){
+  clearInterval(tickHandle);
+  tickHandle = null;
+}
+
+document.getElementById("targetRow").addEventListener("click", (e) => {
+  const btn = e.target.closest(".target-chip");
+  if (!btn) return;
+  targetMin = parseInt(btn.dataset.min, 10);
+  [...document.querySelectorAll(".target-chip")].forEach(c => c.classList.toggle("active", c === btn));
+  renderTimer();
+});
+
+/* =========================================================================
+   SAVE SHEET
+   ========================================================================= */
+function openSaveSheet(elapsedMs){
+  const mins = Math.max(1, Math.round(elapsedMs / 60000));
+  document.getElementById("saveSummary").textContent = `${mins} minute${mins === 1 ? "" : "s"} on ${currentDrill.name}`;
+  document.getElementById("noteInput").value = "";
+  document.getElementById("saveBackdrop").classList.add("open");
+}
+function closeSaveSheet(){
+  document.getElementById("saveBackdrop").classList.remove("open");
+}
+document.getElementById("discardBtn").onclick = closeSaveSheet;
+document.getElementById("saveBtn").onclick = async () => {
+  const note = document.getElementById("noteInput").value.trim();
+  const session = {
+    id: `${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+    startedAt: Date.now() - pendingElapsedMs,
+    durationSec: Math.round(pendingElapsedMs / 1000),
+    topic: currentDrill.name,
+    category: currentDrill.cat,
+    bpm: currentDrill.bpm || null,
+    note
+  };
+  closeSaveSheet();
+  await saveSession(session);
+};
+
+async function saveSession(session){
+  if (fb.ready){
+    try{
+      const { addDoc, collection, serverTimestamp } = fbFns;
+      await addDoc(collection(fb.db, "users", fb.user.uid, "sessions"), {
+        ...session,
+        createdAt: serverTimestamp()
+      });
+      // onSnapshot listener will update the list + re-render
+      return;
+    } catch(e){
+      console.error("Firestore save failed, falling back to local:", e);
+    }
+  }
+  sessions.unshift(session);
+  persistSessions();
+  renderAll();
+}
+
+/* =========================================================================
+   STATS + HISTORY + WEEK CHART
+   ========================================================================= */
+function renderStats(){
+  const now = new Date();
+  const tKey = todayKey(now);
+  const todaySec = sessions.filter(s => todayKey(new Date(s.startedAt)) === tKey)
+                            .reduce((a,s) => a + s.durationSec, 0);
+  document.getElementById("todayMin").innerHTML = `${Math.round(todaySec/60)}<span style="font-size:13px;color:var(--cream-faint);">m</span>`;
+
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - 6); weekStart.setHours(0,0,0,0);
+  const weekSec = sessions.filter(s => new Date(s.startedAt) >= weekStart)
+                           .reduce((a,s) => a + s.durationSec, 0);
+  document.getElementById("weekMin").innerHTML = `${Math.round(weekSec/60)}<span style="font-size:13px;color:var(--cream-faint);">m</span>`;
+
+  document.getElementById("totalSessions").textContent = sessions.length;
+}
+
+function renderWeekChart(){
+  const wrap = document.getElementById("weekChart");
+  wrap.innerHTML = "";
+  const now = new Date();
+  const maxMin = Math.max(dailyGoalMin, 1);
+  for (let i = 6; i >= 0; i--){
+    const d = new Date(now); d.setDate(now.getDate() - i);
+    const key = todayKey(d);
+    const sec = sessions.filter(s => todayKey(new Date(s.startedAt)) === key)
+                         .reduce((a,s) => a + s.durationSec, 0);
+    const min = sec / 60;
+    const pct = Math.max(3, Math.min(100, (min / maxMin) * 100));
+    const col = document.createElement("div");
+    col.className = "week-col";
+    col.innerHTML = `
+      <div class="week-bar-track"><div class="week-bar ${min >= dailyGoalMin ? "hit" : ""} ${i===0 ? "today" : ""}" style="height:${pct}%"></div></div>
+      <div class="week-day-lbl">${d.toLocaleDateString(undefined,{weekday:"narrow"})}</div>`;
+    wrap.appendChild(col);
+  }
+}
+
+function renderHistory(){
+  const wrap = document.getElementById("historyList");
+  if (sessions.length === 0){
+    wrap.innerHTML = `<div class="empty-hint">No sessions yet — hit start above whenever you've got a few minutes. Even five counts.</div>`;
+    return;
+  }
+  wrap.innerHTML = "";
+  sessions.slice(0, 25).forEach(s => {
+    const d = new Date(s.startedAt);
+    const dateStr = d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
+    const row = document.createElement("div");
+    row.className = "session-row";
+    row.innerHTML = `
+      <div class="left">
+        <div class="name">${s.topic}</div>
+        <div class="meta">${dateStr}${s.note ? " · " + s.note : ""}</div>
+      </div>
+      <div class="dur">${Math.round(s.durationSec/60)}m</div>`;
+    wrap.appendChild(row);
+  });
+}
+
+function renderAll(){
+  renderHeader();
+  renderStats();
+  renderWeekChart();
+  renderHistory();
+  renderTimer();
+}
+
+/* =========================================================================
+   METRONOME
+   ========================================================================= */
+let bpm = parseInt(localStorage.getItem(LS_BPM) || "82", 10);
+let audioCtx = null;
+let metroOn = false;
+let nextNoteTime = 0;
+let beatCount = 0;
+let schedulerHandle = null;
+const LOOKAHEAD = 25, SCHEDULE_AHEAD = 0.1;
+
+document.getElementById("bpmNum").textContent = bpm;
+renderBeatDots();
+
+function renderBeatDots(){
+  const wrap = document.getElementById("metroBeat");
+  wrap.innerHTML = "";
+  for (let i = 0; i < 4; i++){
+    const dot = document.createElement("div");
+    dot.className = "beat-dot";
+    dot.dataset.i = i;
+    wrap.appendChild(dot);
+  }
+}
+
+function setBpm(v){
+  bpm = Math.max(30, Math.min(240, v));
+  document.getElementById("bpmNum").textContent = bpm;
+  localStorage.setItem(LS_BPM, bpm);
+}
+
+document.getElementById("bpmUp").onclick = () => setBpm(bpm + 1);
+document.getElementById("bpmDown").onclick = () => setBpm(bpm - 1);
+
+let tapTimes = [];
+document.getElementById("tapBtn").onclick = () => {
+  const now = performance.now();
+  tapTimes = tapTimes.filter(t => now - t < 2000);
+  tapTimes.push(now);
+  if (tapTimes.length >= 2){
+    const intervals = [];
+    for (let i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i-1]);
+    const avg = intervals.reduce((a,b)=>a+b,0) / intervals.length;
+    setBpm(Math.round(60000 / avg));
+  }
+};
+
+function playClick(time, accent){
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = accent ? 1400 : 1000;
+  gain.gain.setValueAtTime(accent ? 0.35 : 0.22, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(time); osc.stop(time + 0.05);
+}
+
+function scheduler(){
+  while (nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD){
+    playClick(nextNoteTime, beatCount % 4 === 0);
+    const b = beatCount % 4;
+    setTimeout(() => {
+      document.querySelectorAll(".beat-dot").forEach(d => d.classList.toggle("active", parseInt(d.dataset.i) === b));
+    }, Math.max(0, (nextNoteTime - audioCtx.currentTime) * 1000));
+    nextNoteTime += 60 / bpm;
+    beatCount++;
+  }
+  schedulerHandle = setTimeout(scheduler, LOOKAHEAD);
+}
+
+document.getElementById("metroToggle").onclick = () => {
+  if (!metroOn){
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    beatCount = 0;
+    nextNoteTime = audioCtx.currentTime + 0.05;
+    scheduler();
+    metroOn = true;
+  } else {
+    clearTimeout(schedulerHandle);
+    metroOn = false;
+    document.querySelectorAll(".beat-dot").forEach(d => d.classList.remove("active"));
+  }
+  document.getElementById("metroToggle").classList.toggle("on", metroOn);
+};
+
+/* =========================================================================
+   SETTINGS SHEET
+   ========================================================================= */
+document.getElementById("settingsBtn").onclick = () => {
+  document.getElementById("goalInput").value = dailyGoalMin;
+  document.getElementById("settingsBackdrop").classList.add("open");
+};
+document.getElementById("closeSettingsBtn").onclick = () => {
+  document.getElementById("settingsBackdrop").classList.remove("open");
+};
+document.getElementById("goalInput").onchange = (e) => {
+  dailyGoalMin = Math.max(5, parseInt(e.target.value || "30", 10));
+  localStorage.setItem(LS_GOAL, dailyGoalMin);
+  if ([5,15,30,60].includes(targetMin) === false || true) renderWeekChart();
+  saveUserMeta();
+};
+document.getElementById("exportBtn").onclick = () => {
+  const blob = new Blob([JSON.stringify(sessions, null, 2)], { type:"application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `guitar-practice-sessions-${todayKey()}.json`;
+  a.click();
+};
+
+/* =========================================================================
+   FIREBASE (optional — local-only if not configured)
+   ========================================================================= */
+let fbFns = {};
+
+async function initFirebase(){
+  if (!FIREBASE_ENABLED){
+    document.getElementById("statusLine").textContent = "Local-only mode — add your Firebase config in index.html to sync across devices.";
+    return;
+  }
+  try{
+    const [{ initializeApp }, authMod, fsMod] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
+    ]);
+    fbFns = {
+      getAuth: authMod.getAuth, signInAnonymously: authMod.signInAnonymously,
+      onAuthStateChanged: authMod.onAuthStateChanged, GoogleAuthProvider: authMod.GoogleAuthProvider,
+      linkWithPopup: authMod.linkWithPopup, signInWithPopup: authMod.signInWithPopup,
+      getFirestore: fsMod.getFirestore, collection: fsMod.collection, addDoc: fsMod.addDoc,
+      doc: fsMod.doc, setDoc: fsMod.setDoc, getDoc: fsMod.getDoc, onSnapshot: fsMod.onSnapshot,
+      query: fsMod.query, orderBy: fsMod.orderBy, serverTimestamp: fsMod.serverTimestamp,
+      limit: fsMod.limit
+    };
+
+    fb.app = initializeApp(firebaseConfig);
+    fb.auth = fbFns.getAuth(fb.app);
+    fb.db = fbFns.getFirestore(fb.app);
+
+    fbFns.onAuthStateChanged(fb.auth, async (user) => {
+      if (!user){
+        await fbFns.signInAnonymously(fb.auth);
+        return;
+      }
+      fb.user = user;
+      fb.ready = true;
+      document.getElementById("syncDot").classList.remove("offline");
+      document.getElementById("statusLine").textContent = user.isAnonymous
+        ? "Syncing to this device's account. Sign in with Google to carry it to other devices."
+        : `Signed in as ${user.displayName || user.email}. Syncing across devices.`;
+
+      subscribeSessions();
+      loadUserMeta();
+    });
+  } catch(e){
+    console.error("Firebase init failed:", e);
+    document.getElementById("statusLine").textContent = "Couldn't connect to Firebase — running local-only for now.";
+  }
+}
+
+function subscribeSessions(){
+  const { collection, query, orderBy, limit, onSnapshot } = fbFns;
+  const q = query(collection(fb.db, "users", fb.user.uid, "sessions"), orderBy("startedAt", "desc"), limit(300));
+  onSnapshot(q, (snap) => {
+    sessions = snap.docs.map(d => {
+      const data = d.data();
+      return { ...data, id: d.id, startedAt: typeof data.startedAt === "number" ? data.startedAt : (data.startedAt?.toMillis?.() || Date.now()) };
+    });
+    persistSessions();
+    renderAll();
+  }, (err) => {
+    console.error("onSnapshot error:", err);
+  });
+}
+
+async function loadUserMeta(){
+  try{
+    const { doc, getDoc } = fbFns;
+    const snap = await getDoc(doc(fb.db, "users", fb.user.uid, "meta", "settings"));
+    if (snap.exists() && snap.data().dailyGoalMin){
+      dailyGoalMin = snap.data().dailyGoalMin;
+      localStorage.setItem(LS_GOAL, dailyGoalMin);
+      renderWeekChart();
+    }
+  } catch(e){ console.error(e); }
+}
+async function saveUserMeta(){
+  if (!fb.ready) return;
+  try{
+    const { doc, setDoc } = fbFns;
+    await setDoc(doc(fb.db, "users", fb.user.uid, "meta", "settings"), { dailyGoalMin }, { merge:true });
+  } catch(e){ console.error(e); }
+}
+
+document.getElementById("googleSyncBtn").onclick = async () => {
+  if (!fb.ready){
+    alert("Firebase isn't configured yet — add your config to index.html first.");
+    return;
+  }
+  const { GoogleAuthProvider, linkWithPopup, signInWithPopup } = fbFns;
+  const provider = new GoogleAuthProvider();
+  try{
+    await linkWithPopup(fb.auth.currentUser, provider);
+  } catch(e){
+    if (e.code === "auth/credential-already-in-use"){
+      // This Google account already has data on another device — switch to it.
+      await signInWithPopup(fb.auth, provider);
+    } else {
+      console.error(e);
+      document.getElementById("statusLine").textContent = "Sign-in didn't complete — try again.";
+    }
+  }
+};
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+if (timer.state === "running") ensureTick();
+renderCatTabs();
+renderDrillCurrent();
+renderAll();
+initFirebase();
+
+// keep timer display correct when returning to a backgrounded tab
+document.addEventListener("visibilitychange", () => { if (!document.hidden) renderTimer(); });
+</script>
+</body>
+</html>
