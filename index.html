@@ -674,6 +674,8 @@
 </div>
 
 <script type="module">
+import { DRILLS } from "./drills.js";
+
 /* =========================================================================
    FIREBASE CONFIG
    Paste your Firebase project config below. Until apiKey is filled in,
@@ -696,31 +698,8 @@ let fb = { app:null, db:null, ready:false };
 
 /* =========================================================================
    DRILL LIBRARY
+   Curriculum lives in ./drills.js, not here — see that file to add/edit drills.
    ========================================================================= */
-const DRILLS = [
-  { cat:"Scales & shapes", name:"Shape 1 → Shape 4 connector", desc:"Slide cleanly between minor pentatonic shape 1 and shape 4, ascending and descending. Start at 82 bpm.", bpm:82 },
-  { cat:"Scales & shapes", name:"Diagonal shifts", desc:"Link shapes 1 through 5 diagonally up the neck in one continuous run, one octave per shift.", bpm:76 },
-  { cat:"Scales & shapes", name:"Five shapes, one key", desc:"Cycle through all five pentatonic shapes on a single string set without stopping.", bpm:80 },
-  { cat:"Scales & shapes", name:"Major/minor swap", desc:"Same shape, same root — toggle between major and minor pentatonic and listen for the difference.", bpm:78 },
-  { cat:"Scales & shapes", name:"CAGED shape mapping", desc:"Play a single root note through all five CAGED chord shapes up the neck — C, A, G, E, D in order — to see where it lives everywhere.", bpm:null },
-  { cat:"Scales & shapes", name:"CAGED arpeggio connector", desc:"Arpeggiate one CAGED shape, slide into the next shape up the neck, and arpeggiate that one — no gaps, no repeated shapes.", bpm:70 },
-  { cat:"Scales & shapes", name:"CAGED → pentatonic overlay", desc:"Play a CAGED chord shape, then find the matching pentatonic box laid on top of it. This is the bridge between the two systems.", bpm:null },
-  { cat:"Scales & shapes", name:"One key, five CAGED shapes", desc:"Pick a key and move through all five CAGED positions ascending the neck, playing the chord then a short lick from that position.", bpm:74 },
-  { cat:"Improvisation", name:"Solo over I–IV–V", desc:"Loop a I–IV–V backing track on the Spark Go and solo, prioritizing phrasing over speed.", bpm:null },
-  { cat:"Improvisation", name:"Call and response", desc:"Play a two-bar lick, then answer it — treat it like a conversation, not a scale run.", bpm:null },
-  { cat:"Improvisation", name:"One-string solo", desc:"Improvise using only the high E string. Forces melodic thinking over shape memory.", bpm:null },
-  { cat:"Improvisation", name:"Target the chord tones", desc:"Improvise through a progression, landing deliberately on the 3rd or 7th at each chord change.", bpm:null },
-  { cat:"Repertoire", name:"Autumn Leaves — head", desc:"Play the melody clean and in time, then try comping through the changes once through.", bpm:null },
-  { cat:"Repertoire", name:"Autumn Leaves — ii–V–I", desc:"Isolate the ii–V–I movements in the tune and get comfortable moving between them.", bpm:null },
-  { cat:"Repertoire", name:"Mayer-style groove", desc:"Palm-muted rhythm pocket, then layer in a clean lead line over the top.", bpm:null },
-  { cat:"Repertoire", name:"Neo-soul voicings", desc:"Work through 9th/11th/13th chord voicings with smooth voice leading between changes.", bpm:null },
-  { cat:"Technique", name:"Alternate picking ladder", desc:"Metronome on, start slow and clean, add 4 bpm each clean pass through.", bpm:70 },
-  { cat:"Technique", name:"String skipping", desc:"Clean jumps across non-adjacent strings without brushing the ones in between.", bpm:72 },
-  { cat:"Technique", name:"Legato run", desc:"Hammer-ons and pull-offs through a full pentatonic shape — no picking hand at all.", bpm:75 },
-  { cat:"Technique", name:"Strat setup check", desc:"Quick weekly check-in: action, intonation, string freshness on the Squier.", bpm:null },
-  { cat:"Ear training", name:"Sing then play", desc:"Sing a short phrase from memory, then find it on the fretboard by ear.", bpm:null },
-  { cat:"Ear training", name:"Transcribe 4 bars", desc:"Pick four bars from a favorite track and work it out entirely by ear.", bpm:null },
-];
 const CATEGORIES = [...new Set(DRILLS.map(d => d.cat))];
 
 /* =========================================================================
