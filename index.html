@@ -637,15 +637,19 @@
    create a project and fill this in.
    ========================================================================= */
 const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME.appspot.com",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME"
+  apiKey: "AIzaSyA_qKc-UWYRwBQMCN6yUyV58gnp0AcmG1E",
+  authDomain: "practicetracker-94b25.firebaseapp.com",
+  projectId: "practicetracker-94b25",
+  storageBucket: "practicetracker-94b25.firebasestorage.app",
+  messagingSenderId: "417246148270",
+  appId: "1:417246148270:web:1f9a1dc959106d1d6adf3f"
 };
 
-const FIREBASE_ENABLED = firebaseConfig.apiKey && firebaseConfig.apiKey !== "REPLACE_ME";
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+
+const FIREBASE_ENABLED = firebaseConfig.apiKey && firebaseConfig.apiKey !== "AIzaSyA_qKc-UWYRwBQMCN6yUyV58gnp0AcmG1EE";
 
 let fb = { app:null, auth:null, db:null, user:null, ready:false };
 
