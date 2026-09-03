@@ -253,6 +253,28 @@
     font-family:inherit;
   }
 
+  /* ---------- active timer adjust ("forgot to start it?") ---------- */
+  .active-timer-edit{ min-height:0; text-align:center; font-size:12px; color:var(--cream-faint); margin-top:10px; }
+  .active-timer-edit:empty{ margin-top:0; }
+  .active-timer-edit .adjust-link{
+    background:none; border:none; color:var(--amber);
+    font-size:12px; text-decoration:underline; cursor:pointer; padding:2px 4px; font-family:inherit;
+  }
+  .active-timer-edit .adjust-form{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--bg-2); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; margin-top:2px;
+  }
+  .active-timer-edit .adjust-form input{
+    font-family:inherit; font-size:13px; padding:7px 8px; border-radius:8px;
+    border:1px solid var(--line); background:var(--bg-1); color:var(--cream);
+  }
+  .active-timer-edit .adjust-form button{
+    border:none; border-radius:8px; padding:7px 12px; font-weight:600; font-size:12.5px; cursor:pointer; font-family:inherit;
+  }
+  .active-timer-edit .adjust-save{ background:var(--amber); color:#1c120c; }
+  .active-timer-edit .adjust-cancel{ background:transparent; border:1px solid var(--line-strong); color:var(--cream-dim); }
+
   /* ---------- drill card ---------- */
   .drill-current{
     display:flex;
@@ -407,7 +429,29 @@
   .session-row .left .name{ font-size:13.5px; font-weight:600; }
   .session-row .left .meta{ font-size:11.5px; color:var(--cream-faint); margin-top:2px; }
   .session-row .dur{ font-family:"Space Mono",monospace; font-size:14px; color:var(--cream-dim); }
+  .session-row .row-actions{ display:flex; gap:6px; margin-left:10px; flex-shrink:0; }
+  .row-icon-btn{
+    width:26px; height:26px; border-radius:50%;
+    border:1px solid var(--line); background:transparent; color:var(--cream-faint);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px;
+  }
+  .row-icon-btn.danger:active{ background:var(--red-soft); color:#e6a894; }
   .empty-hint{ font-size:13px; color:var(--cream-faint); line-height:1.5; padding:6px 2px; }
+
+  .session-editing{ padding:12px 0; border-bottom:1px solid var(--line); }
+  .edit-form{ display:flex; flex-direction:column; gap:10px; }
+  .edit-form label{ display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--cream-faint); font-weight:600; }
+  .edit-form input, .edit-form select, .edit-form textarea{
+    font-family:inherit; font-size:13.5px; padding:9px 10px; border-radius:8px;
+    border:1px solid var(--line); background:var(--bg-2); color:var(--cream);
+  }
+  .edit-form textarea{ resize:none; min-height:52px; }
+  .edit-form .edit-row2{ display:flex; gap:8px; }
+  .edit-form .edit-row2 label{ flex:1; }
+  .edit-actions{ display:flex; gap:8px; margin-top:2px; }
+  .edit-actions button{ flex:1; border:none; border-radius:8px; padding:10px; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit; }
+  .edit-save{ background:var(--amber); color:#1c120c; }
+  .edit-cancel{ background:transparent; border:1px solid var(--line-strong) !important; color:var(--cream-dim); }
 
   /* ---------- save sheet ---------- */
   .sheet-backdrop{
@@ -512,6 +556,8 @@
     <div class="transport" id="transport">
       <button class="btn-primary" id="startBtn">Start practicing</button>
     </div>
+
+    <div class="active-timer-edit" id="timerStartEdit"></div>
 
     <div class="drill-current" id="drillCurrent" style="margin-top:18px;">
       <div>
@@ -698,6 +744,9 @@ let timer = JSON.parse(localStorage.getItem(LS_TIMER) || "null") || {
 };
 let tickHandle = null;
 let pendingElapsedMs = 0;
+let editingTimerStart = false;
+let editingSessionId = null;
+let lastEditRenderId = null;
 
 /* =========================================================================
    UTIL
@@ -715,6 +764,20 @@ function todayKey(d = new Date()){
 }
 function persistSessions(){ localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions.slice(0, 500))); }
 function persistTimer(){ localStorage.setItem(LS_TIMER, JSON.stringify(timer)); }
+
+// datetime-local inputs use "YYYY-MM-DDTHH:mm" in the browser's local time,
+// with no timezone info — these convert to/from that exact shape so an edited
+// time round-trips as the same wall-clock moment the person typed.
+function toLocalInputValue(ms){
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromLocalInputValue(str){ return new Date(str).getTime(); }
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
 
 /* =========================================================================
    RENDER: header / date / streak
@@ -812,6 +875,66 @@ function renderTimer(){
   document.getElementById("recDot").classList.toggle("live", timer.state === "running");
 
   renderTransport();
+  renderTimerStartEdit();
+}
+
+// Effective start time of the current session = now minus however much
+// elapsed time we're currently counting.
+function effectiveStartMs(){
+  return Date.now() - currentElapsedMs();
+}
+
+// Retroactively push the session's start earlier (or later) — used when
+// practice actually began before the Start button got tapped. Collapses
+// any prior pause gaps into one continuous elapsed count, which is fine
+// for a simple correction like this.
+function adjustSessionStart(newStartMs){
+  const desiredElapsed = Math.max(0, Date.now() - newStartMs);
+  if (timer.state === "running"){
+    timer.accumulatedMs = Math.max(0, desiredElapsed - (Date.now() - timer.startedAt));
+  } else {
+    timer.accumulatedMs = desiredElapsed;
+  }
+  persistTimer();
+}
+
+let timerStartEditRendered = false;
+function renderTimerStartEdit(){
+  const container = document.getElementById("timerStartEdit");
+  if (timer.state === "idle"){
+    container.style.display = "none";
+    container.innerHTML = "";
+    timerStartEditRendered = false;
+    editingTimerStart = false;
+    return;
+  }
+  container.style.display = "";
+  if (editingTimerStart && timerStartEditRendered) return; // form open — don't wipe unsaved typing
+  timerStartEditRendered = editingTimerStart;
+
+  if (editingTimerStart){
+    container.innerHTML = `<div class="adjust-form">
+      <input type="datetime-local" id="timerAdjustInput" value="${toLocalInputValue(effectiveStartMs())}">
+      <button class="adjust-save" id="timerAdjustSave">Save</button>
+      <button class="adjust-cancel" id="timerAdjustCancel">Cancel</button>
+    </div>`;
+    document.getElementById("timerAdjustSave").onclick = () => {
+      const val = document.getElementById("timerAdjustInput").value;
+      if (val) adjustSessionStart(fromLocalInputValue(val));
+      editingTimerStart = false;
+      renderTimer();
+    };
+    document.getElementById("timerAdjustCancel").onclick = () => {
+      editingTimerStart = false;
+      renderTimer();
+    };
+  } else {
+    container.innerHTML = `Started at ${new Date(effectiveStartMs()).toLocaleTimeString([], {hour:"numeric", minute:"2-digit"})} · <button class="adjust-link" id="timerAdjustOpen">forgot to start it? adjust</button>`;
+    document.getElementById("timerAdjustOpen").onclick = () => {
+      editingTimerStart = true;
+      renderTimer();
+    };
+  }
 }
 
 function renderTransport(){
@@ -966,20 +1089,140 @@ function renderHistory(){
     wrap.innerHTML = `<div class="empty-hint">No sessions yet — hit start above whenever you've got a few minutes. Even five counts.</div>`;
     return;
   }
+
+  if (editingSessionId !== null){
+    if (lastEditRenderId === editingSessionId) return; // form open — don't wipe unsaved typing
+    lastEditRenderId = editingSessionId;
+  } else {
+    lastEditRenderId = null;
+  }
+
   wrap.innerHTML = "";
   sessions.slice(0, 25).forEach(s => {
+    if (editingSessionId === s.id){
+      const el = document.createElement("div");
+      el.innerHTML = renderSessionEditForm(s);
+      wrap.appendChild(el.firstElementChild);
+      return;
+    }
     const d = new Date(s.startedAt);
     const dateStr = d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
     const row = document.createElement("div");
     row.className = "session-row";
     row.innerHTML = `
       <div class="left">
-        <div class="name">${s.topic}</div>
-        <div class="meta">${dateStr}${s.note ? " · " + s.note : ""}</div>
+        <div class="name">${escapeHtml(s.topic)}</div>
+        <div class="meta">${dateStr}${s.note ? " · " + escapeHtml(s.note) : ""}</div>
       </div>
-      <div class="dur">${Math.round(s.durationSec/60)}m</div>`;
+      <div class="dur">${Math.round(s.durationSec/60)}m</div>
+      <div class="row-actions">
+        <button class="row-icon-btn" data-edit="${s.id}" aria-label="Edit session">✎</button>
+        <button class="row-icon-btn danger" data-del="${s.id}" aria-label="Delete session">✕</button>
+      </div>`;
     wrap.appendChild(row);
   });
+
+  wrap.querySelectorAll("[data-edit]").forEach(btn => {
+    btn.onclick = () => { editingSessionId = btn.dataset.edit; renderHistory(); };
+  });
+  wrap.querySelectorAll("[data-del]").forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm("Delete this session?")) return;
+      await deleteSession(btn.dataset.del);
+    };
+  });
+  wrap.querySelectorAll(".edit-cancel").forEach(btn => {
+    btn.onclick = () => { editingSessionId = null; renderHistory(); };
+  });
+  wrap.querySelectorAll(".edit-save").forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.id;
+      const s = sessions.find(x => x.id === id);
+      if (!s) return;
+      const startVal = document.getElementById(`editStart-${id}`).value;
+      const endVal = document.getElementById(`editEnd-${id}`).value;
+      const topicVal = document.getElementById(`editTopic-${id}`).value;
+      const noteVal = document.getElementById(`editNote-${id}`).value.trim();
+      if (!startVal || !endVal) return;
+      const startMs = fromLocalInputValue(startVal);
+      const endMs = fromLocalInputValue(endVal);
+      if (endMs <= startMs){
+        alert("End time needs to be after the start time.");
+        return;
+      }
+      const matchedDrill = DRILLS.find(d => d.name === topicVal);
+      const updated = {
+        ...s,
+        startedAt: startMs,
+        durationSec: Math.round((endMs - startMs) / 1000),
+        topic: topicVal,
+        category: matchedDrill ? matchedDrill.cat : s.category,
+        bpm: matchedDrill ? (matchedDrill.bpm || null) : s.bpm,
+        note: noteVal
+      };
+      editingSessionId = null;
+      await updateSession(updated);
+    };
+  });
+}
+
+function renderSessionEditForm(s){
+  const options = CATEGORIES.map(cat => {
+    const opts = DRILLS.filter(d => d.cat === cat)
+      .map(d => `<option value="${escapeHtml(d.name)}" ${d.name === s.topic ? "selected" : ""}>${escapeHtml(d.name)}</option>`)
+      .join("");
+    return `<optgroup label="${escapeHtml(cat)}">${opts}</optgroup>`;
+  }).join("");
+  const customOpt = DRILLS.some(d => d.name === s.topic) ? "" : `<option value="${escapeHtml(s.topic)}" selected>${escapeHtml(s.topic)}</option>`;
+
+  return `<div class="session-editing">
+    <div class="edit-form">
+      <div class="edit-row2">
+        <label>Start<input type="datetime-local" id="editStart-${s.id}" value="${toLocalInputValue(s.startedAt)}"></label>
+        <label>End<input type="datetime-local" id="editEnd-${s.id}" value="${toLocalInputValue(s.startedAt + s.durationSec * 1000)}"></label>
+      </div>
+      <label>Drill<select id="editTopic-${s.id}">${customOpt}${options}</select></label>
+      <label>Note (optional)<textarea id="editNote-${s.id}" placeholder="Anything worth remembering?">${s.note ? escapeHtml(s.note) : ""}</textarea></label>
+      <div class="edit-actions">
+        <button class="edit-save" data-id="${s.id}">Save</button>
+        <button class="edit-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function updateSession(session){
+  if (fb.ready){
+    try{
+      const { doc, updateDoc } = fbFns;
+      const { id, ...fields } = session;
+      await updateDoc(doc(fb.db, "users", fb.user.uid, "sessions", id), fields);
+      // onSnapshot listener will update the list + re-render
+      return;
+    } catch(e){
+      console.error("Firestore update failed, falling back to local:", e);
+    }
+  }
+  const idx = sessions.findIndex(x => x.id === session.id);
+  if (idx !== -1) sessions[idx] = session;
+  persistSessions();
+  renderAll();
+}
+
+async function deleteSession(id){
+  if (fb.ready){
+    try{
+      const { doc, deleteDoc } = fbFns;
+      await deleteDoc(doc(fb.db, "users", fb.user.uid, "sessions", id));
+      // onSnapshot listener will update the list + re-render
+      return;
+    } catch(e){
+      console.error("Firestore delete failed, falling back to local:", e);
+    }
+  }
+  sessions = sessions.filter(x => x.id !== id);
+  persistSessions();
+  renderAll();
 }
 
 function renderAll(){
@@ -1119,9 +1362,11 @@ async function initFirebase(){
     fbFns = {
       getAuth: authMod.getAuth, signInAnonymously: authMod.signInAnonymously,
       onAuthStateChanged: authMod.onAuthStateChanged, GoogleAuthProvider: authMod.GoogleAuthProvider,
-      linkWithPopup: authMod.linkWithPopup, signInWithPopup: authMod.signInWithPopup,
+      linkWithRedirect: authMod.linkWithRedirect, signInWithRedirect: authMod.signInWithRedirect,
+      getRedirectResult: authMod.getRedirectResult, signInWithCredential: authMod.signInWithCredential,
       getFirestore: fsMod.getFirestore, collection: fsMod.collection, addDoc: fsMod.addDoc,
       doc: fsMod.doc, setDoc: fsMod.setDoc, getDoc: fsMod.getDoc, onSnapshot: fsMod.onSnapshot,
+      updateDoc: fsMod.updateDoc, deleteDoc: fsMod.deleteDoc,
       query: fsMod.query, orderBy: fsMod.orderBy, serverTimestamp: fsMod.serverTimestamp,
       limit: fsMod.limit
     };
@@ -1129,6 +1374,26 @@ async function initFirebase(){
     fb.app = initializeApp(firebaseConfig);
     fb.auth = fbFns.getAuth(fb.app);
     fb.db = fbFns.getFirestore(fb.app);
+
+    // Pick up the result of a Google sign-in redirect, if we're returning from one.
+    try{
+      const result = await fbFns.getRedirectResult(fb.auth);
+      if (result && result.user){
+        document.getElementById("statusLine").textContent = "Signed in with Google — syncing.";
+      }
+    } catch(redirectErr){
+      if (redirectErr.code === "auth/credential-already-in-use"){
+        // This Google account already has data on another device — sign into that account instead.
+        const cred = fbFns.GoogleAuthProvider.credentialFromError(redirectErr);
+        if (cred){
+          try{ await fbFns.signInWithCredential(fb.auth, cred); }
+          catch(e2){ console.error("signInWithCredential failed:", e2); }
+        }
+      } else if (redirectErr.code){
+        console.error("Google redirect sign-in error:", redirectErr);
+        document.getElementById("statusLine").textContent = `Google sign-in error: ${redirectErr.code}`;
+      }
+    }
 
     fbFns.onAuthStateChanged(fb.auth, async (user) => {
       if (!user){
@@ -1190,18 +1455,15 @@ document.getElementById("googleSyncBtn").onclick = async () => {
     alert("Firebase isn't configured yet — add your config to index.html first.");
     return;
   }
-  const { GoogleAuthProvider, linkWithPopup, signInWithPopup } = fbFns;
+  const { GoogleAuthProvider, linkWithRedirect } = fbFns;
   const provider = new GoogleAuthProvider();
   try{
-    await linkWithPopup(fb.auth.currentUser, provider);
+    // Full-page redirect instead of a popup — popups are unreliable (often silently
+    // blocked) inside an iOS home-screen web app. This navigates away and back.
+    await linkWithRedirect(fb.auth.currentUser, provider);
   } catch(e){
-    if (e.code === "auth/credential-already-in-use"){
-      // This Google account already has data on another device — switch to it.
-      await signInWithPopup(fb.auth, provider);
-    } else {
-      console.error(e);
-      document.getElementById("statusLine").textContent = "Sign-in didn't complete — try again.";
-    }
+    console.error("linkWithRedirect failed to start:", e);
+    document.getElementById("statusLine").textContent = `Sign-in didn't start (${e.code || e.message}). Try again.`;
   }
 };
 
