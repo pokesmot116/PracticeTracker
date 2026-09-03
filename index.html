@@ -657,8 +657,7 @@
     <div class="field-row">
       <div style="width:100%;">
         <div class="lbl">Sync across devices</div>
-        <div class="sub">Currently saving to this device only</div>
-        <button class="link-btn" id="googleSyncBtn">Sign in with Google</button>
+        <div class="sub">No sign-in needed — every device that opens this page shares the same log automatically.</div>
       </div>
     </div>
     <div class="field-row">
@@ -693,7 +692,7 @@ const firebaseConfig = {
 
 const FIREBASE_ENABLED = firebaseConfig.apiKey && firebaseConfig.apiKey !== "REPLACE_ME";
 
-let fb = { app:null, auth:null, db:null, user:null, ready:false };
+let fb = { app:null, db:null, ready:false };
 
 /* =========================================================================
    DRILL LIBRARY
@@ -1025,23 +1024,17 @@ document.getElementById("saveBtn").onclick = async () => {
   await saveSession(session);
 };
 
+async function persistSessionsRemote(){
+  if (!fb.ready) return;
+  try{ await fbFns.setDoc(sessionsDocRef, { list: sessions }); }
+  catch(e){ console.error("Firestore session write failed:", e); }
+}
+
 async function saveSession(session){
-  if (fb.ready){
-    try{
-      const { addDoc, collection, serverTimestamp } = fbFns;
-      await addDoc(collection(fb.db, "users", fb.user.uid, "sessions"), {
-        ...session,
-        createdAt: serverTimestamp()
-      });
-      // onSnapshot listener will update the list + re-render
-      return;
-    } catch(e){
-      console.error("Firestore save failed, falling back to local:", e);
-    }
-  }
   sessions.unshift(session);
   persistSessions();
   renderAll();
+  await persistSessionsRemote();
 }
 
 /* =========================================================================
@@ -1192,37 +1185,18 @@ function renderSessionEditForm(s){
 }
 
 async function updateSession(session){
-  if (fb.ready){
-    try{
-      const { doc, updateDoc } = fbFns;
-      const { id, ...fields } = session;
-      await updateDoc(doc(fb.db, "users", fb.user.uid, "sessions", id), fields);
-      // onSnapshot listener will update the list + re-render
-      return;
-    } catch(e){
-      console.error("Firestore update failed, falling back to local:", e);
-    }
-  }
   const idx = sessions.findIndex(x => x.id === session.id);
   if (idx !== -1) sessions[idx] = session;
   persistSessions();
   renderAll();
+  await persistSessionsRemote();
 }
 
 async function deleteSession(id){
-  if (fb.ready){
-    try{
-      const { doc, deleteDoc } = fbFns;
-      await deleteDoc(doc(fb.db, "users", fb.user.uid, "sessions", id));
-      // onSnapshot listener will update the list + re-render
-      return;
-    } catch(e){
-      console.error("Firestore delete failed, falling back to local:", e);
-    }
-  }
   sessions = sessions.filter(x => x.id !== id);
   persistSessions();
   renderAll();
+  await persistSessionsRemote();
 }
 
 function renderAll(){
@@ -1345,8 +1319,18 @@ document.getElementById("exportBtn").onclick = () => {
 
 /* =========================================================================
    FIREBASE (optional — local-only if not configured)
+   No login: this mirrors the baby tracker's approach — one shared Firestore
+   document synced to every device that opens this page, no sign-in step.
+   That means anyone with your Firebase config could read/write it, same
+   trade-off the baby tracker makes; fine for a private, unlisted personal
+   tool. See INSTRUCTIONS.md for the security rules this needs.
    ========================================================================= */
 let fbFns = {};
+let sessionsDocRef, settingsDocRef;
+let hasSeededSessions = false;
+
+function markSyncOnline(){ document.getElementById("syncDot").classList.remove("offline"); }
+function markSyncOffline(){ document.getElementById("syncDot").classList.add("offline"); }
 
 async function initFirebase(){
   if (!FIREBASE_ENABLED){
@@ -1354,136 +1338,74 @@ async function initFirebase(){
     return;
   }
   try{
-    const [{ initializeApp }, authMod, fsMod] = await Promise.all([
+    const [{ initializeApp }, fsMod] = await Promise.all([
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
     ]);
     fbFns = {
-      getAuth: authMod.getAuth, signInAnonymously: authMod.signInAnonymously,
-      onAuthStateChanged: authMod.onAuthStateChanged, GoogleAuthProvider: authMod.GoogleAuthProvider,
-      linkWithRedirect: authMod.linkWithRedirect, signInWithRedirect: authMod.signInWithRedirect,
-      getRedirectResult: authMod.getRedirectResult, signInWithCredential: authMod.signInWithCredential,
-      getFirestore: fsMod.getFirestore, collection: fsMod.collection, addDoc: fsMod.addDoc,
-      doc: fsMod.doc, setDoc: fsMod.setDoc, getDoc: fsMod.getDoc, onSnapshot: fsMod.onSnapshot,
-      updateDoc: fsMod.updateDoc, deleteDoc: fsMod.deleteDoc,
-      query: fsMod.query, orderBy: fsMod.orderBy, serverTimestamp: fsMod.serverTimestamp,
-      limit: fsMod.limit
+      getFirestore: fsMod.getFirestore, doc: fsMod.doc, setDoc: fsMod.setDoc,
+      onSnapshot: fsMod.onSnapshot
     };
 
     fb.app = initializeApp(firebaseConfig);
-    fb.auth = fbFns.getAuth(fb.app);
     fb.db = fbFns.getFirestore(fb.app);
+    sessionsDocRef = fbFns.doc(fb.db, "guitarPractice", "sessions");
+    settingsDocRef = fbFns.doc(fb.db, "guitarPractice", "settings");
+    fb.ready = true;
 
-    // Pick up the result of a Google sign-in redirect, if we're returning from one.
-    const wasPendingSignIn = sessionStorage.getItem("gp_pending_google_signin") === "1";
-    sessionStorage.removeItem("gp_pending_google_signin");
-    try{
-      const result = await fbFns.getRedirectResult(fb.auth);
-      if (result && result.user){
-        document.getElementById("statusLine").textContent = "Signed in with Google — syncing.";
-      } else if (wasPendingSignIn){
-        // We left for the Google sign-in page and came back, but Firebase has no
-        // redirect result to report — most likely the browser/OS storage that
-        // tracks the pending sign-in didn't survive the round trip. This is a
-        // known iOS quirk with home-screen web apps specifically.
-        document.getElementById("statusLine").textContent =
-          "Google sign-in didn't complete. If you're using the home-screen icon, try opening the site in Safari directly (not the icon) and signing in there once — after that, the icon will already be signed in.";
-      }
-    } catch(redirectErr){
-      if (redirectErr.code === "auth/credential-already-in-use"){
-        // This Google account already has data on another device — sign into that account instead.
-        const cred = fbFns.GoogleAuthProvider.credentialFromError(redirectErr);
-        if (cred){
-          try{
-            await fbFns.signInWithCredential(fb.auth, cred);
-            document.getElementById("statusLine").textContent = "Signed in with Google — pulled in your synced history.";
-          }
-          catch(e2){
-            console.error("signInWithCredential failed:", e2);
-            document.getElementById("statusLine").textContent = `Couldn't finish signing in (${e2.code || e2.message}).`;
-          }
-        } else {
-          document.getElementById("statusLine").textContent = "This Google account is already linked elsewhere, but the sign-in couldn't complete automatically. Try again.";
-        }
-      } else if (redirectErr.code){
-        console.error("Google redirect sign-in error:", redirectErr);
-        document.getElementById("statusLine").textContent = `Google sign-in error: ${redirectErr.code}`;
-      }
-    }
-
-    fbFns.onAuthStateChanged(fb.auth, async (user) => {
-      if (!user){
-        await fbFns.signInAnonymously(fb.auth);
-        return;
-      }
-      fb.user = user;
-      fb.ready = true;
-      document.getElementById("syncDot").classList.remove("offline");
-      document.getElementById("statusLine").textContent = user.isAnonymous
-        ? "Syncing to this device's account. Sign in with Google to carry it to other devices."
-        : `Signed in as ${user.displayName || user.email}. Syncing across devices.`;
-
-      subscribeSessions();
-      loadUserMeta();
-    });
+    document.getElementById("statusLine").textContent = "Syncing — every device that opens this page shares the same log.";
+    subscribeSessions();
+    subscribeSettings();
   } catch(e){
     console.error("Firebase init failed:", e);
     document.getElementById("statusLine").textContent = "Couldn't connect to Firebase — running local-only for now.";
+    markSyncOffline();
   }
 }
 
 function subscribeSessions(){
-  const { collection, query, orderBy, limit, onSnapshot } = fbFns;
-  const q = query(collection(fb.db, "users", fb.user.uid, "sessions"), orderBy("startedAt", "desc"), limit(300));
-  onSnapshot(q, (snap) => {
-    sessions = snap.docs.map(d => {
-      const data = d.data();
-      return { ...data, id: d.id, startedAt: typeof data.startedAt === "number" ? data.startedAt : (data.startedAt?.toMillis?.() || Date.now()) };
-    });
-    persistSessions();
-    renderAll();
+  const { onSnapshot, setDoc } = fbFns;
+  onSnapshot(sessionsDocRef, async (snap) => {
+    if (snap.exists() && Array.isArray(snap.data().list)){
+      sessions = snap.data().list;
+      persistSessions();
+      renderAll();
+    } else if (!hasSeededSessions){
+      // Nothing in Firestore yet — seed it with whatever's already on this
+      // device instead of wiping local history down to nothing.
+      hasSeededSessions = true;
+      try{ await setDoc(sessionsDocRef, { list: sessions }); }
+      catch(e){ console.error("Seeding sessions failed:", e); }
+    }
+    markSyncOnline();
   }, (err) => {
-    console.error("onSnapshot error:", err);
+    console.error("sessions onSnapshot error:", err);
+    markSyncOffline();
   });
 }
 
-async function loadUserMeta(){
-  try{
-    const { doc, getDoc } = fbFns;
-    const snap = await getDoc(doc(fb.db, "users", fb.user.uid, "meta", "settings"));
+function subscribeSettings(){
+  const { onSnapshot } = fbFns;
+  onSnapshot(settingsDocRef, (snap) => {
     if (snap.exists() && snap.data().dailyGoalMin){
       dailyGoalMin = snap.data().dailyGoalMin;
       localStorage.setItem(LS_GOAL, dailyGoalMin);
       renderWeekChart();
     }
-  } catch(e){ console.error(e); }
+    markSyncOnline();
+  }, (err) => {
+    console.error("settings onSnapshot error:", err);
+    markSyncOffline();
+  });
 }
+
 async function saveUserMeta(){
   if (!fb.ready) return;
   try{
-    const { doc, setDoc } = fbFns;
-    await setDoc(doc(fb.db, "users", fb.user.uid, "meta", "settings"), { dailyGoalMin }, { merge:true });
+    const { setDoc } = fbFns;
+    await setDoc(settingsDocRef, { dailyGoalMin }, { merge:true });
   } catch(e){ console.error(e); }
 }
-
-document.getElementById("googleSyncBtn").onclick = async () => {
-  if (!fb.ready){
-    alert("Firebase isn't configured yet — add your config to index.html first.");
-    return;
-  }
-  const { GoogleAuthProvider, linkWithRedirect } = fbFns;
-  const provider = new GoogleAuthProvider();
-  sessionStorage.setItem("gp_pending_google_signin", "1");
-  try{
-    // Full-page redirect instead of a popup — popups are unreliable (often silently
-    // blocked) inside an iOS home-screen web app. This navigates away and back.
-    await linkWithRedirect(fb.auth.currentUser, provider);
-  } catch(e){
-    console.error("linkWithRedirect failed to start:", e);
-    document.getElementById("statusLine").textContent = `Sign-in didn't start (${e.code || e.message}). Try again.`;
-  }
-};
 
 /* =========================================================================
    BOOT
