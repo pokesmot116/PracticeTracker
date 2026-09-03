@@ -1376,18 +1376,35 @@ async function initFirebase(){
     fb.db = fbFns.getFirestore(fb.app);
 
     // Pick up the result of a Google sign-in redirect, if we're returning from one.
+    const wasPendingSignIn = sessionStorage.getItem("gp_pending_google_signin") === "1";
+    sessionStorage.removeItem("gp_pending_google_signin");
     try{
       const result = await fbFns.getRedirectResult(fb.auth);
       if (result && result.user){
         document.getElementById("statusLine").textContent = "Signed in with Google — syncing.";
+      } else if (wasPendingSignIn){
+        // We left for the Google sign-in page and came back, but Firebase has no
+        // redirect result to report — most likely the browser/OS storage that
+        // tracks the pending sign-in didn't survive the round trip. This is a
+        // known iOS quirk with home-screen web apps specifically.
+        document.getElementById("statusLine").textContent =
+          "Google sign-in didn't complete. If you're using the home-screen icon, try opening the site in Safari directly (not the icon) and signing in there once — after that, the icon will already be signed in.";
       }
     } catch(redirectErr){
       if (redirectErr.code === "auth/credential-already-in-use"){
         // This Google account already has data on another device — sign into that account instead.
         const cred = fbFns.GoogleAuthProvider.credentialFromError(redirectErr);
         if (cred){
-          try{ await fbFns.signInWithCredential(fb.auth, cred); }
-          catch(e2){ console.error("signInWithCredential failed:", e2); }
+          try{
+            await fbFns.signInWithCredential(fb.auth, cred);
+            document.getElementById("statusLine").textContent = "Signed in with Google — pulled in your synced history.";
+          }
+          catch(e2){
+            console.error("signInWithCredential failed:", e2);
+            document.getElementById("statusLine").textContent = `Couldn't finish signing in (${e2.code || e2.message}).`;
+          }
+        } else {
+          document.getElementById("statusLine").textContent = "This Google account is already linked elsewhere, but the sign-in couldn't complete automatically. Try again.";
         }
       } else if (redirectErr.code){
         console.error("Google redirect sign-in error:", redirectErr);
@@ -1457,6 +1474,7 @@ document.getElementById("googleSyncBtn").onclick = async () => {
   }
   const { GoogleAuthProvider, linkWithRedirect } = fbFns;
   const provider = new GoogleAuthProvider();
+  sessionStorage.setItem("gp_pending_google_signin", "1");
   try{
     // Full-page redirect instead of a popup — popups are unreliable (often silently
     // blocked) inside an iOS home-screen web app. This navigates away and back.
