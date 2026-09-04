@@ -862,7 +862,9 @@ function setDrill(d){
   if (d.bpm) setBpm(d.bpm);
   renderDrillCurrent();
   renderCatTabs();
-  renderTimer();
+  // Only touch timer-related DOM when a session is actually running/paused —
+  // otherwise this is just idle browsing and there's nothing timer-side to update.
+  if (isActiveSession) renderLiveLaps(currentElapsedMs());
 }
 
 document.getElementById("shuffleBtn").onclick = () => {
