@@ -807,6 +807,8 @@ const LS_TIMER = "gp_timer_state";
 const LS_GOAL = "gp_daily_goal_min";
 const LS_DRILL = "gp_current_drill";
 const LS_BPM = "gp_bpm";
+const LS_MIGRATED = "gp_migrated_sessions_v1";
+const LS_LAST_REMOTE_COUNT = "gp_last_remote_session_count";
 
 let sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || "[]");
 let dailyGoalMin = parseInt(localStorage.getItem(LS_GOAL) || "30", 10);
@@ -950,6 +952,7 @@ function setDrill(d){
   if (d.bpm) setBpm(d.bpm);
   renderDrillCurrent();
   renderCatTabs();
+  persistTimerRemote();
 }
 
 document.getElementById("shuffleBtn").onclick = () => {
@@ -1007,6 +1010,7 @@ function adjustSessionStart(newStartMs){
     timer.accumulatedMs = desiredElapsed;
   }
   persistTimer();
+  persistTimerRemote();
 }
 
 let timerStartEditRendered = false;
@@ -1070,6 +1074,7 @@ function startTimer(){
   persistTimer();
   ensureTick();
   renderTimer();
+  persistTimerRemote();
 }
 
 function pauseTimer(){
@@ -1079,6 +1084,7 @@ function pauseTimer(){
   persistTimer();
   stopTick();
   renderTimer();
+  persistTimerRemote();
 }
 
 function finishTimer(){
@@ -1088,6 +1094,7 @@ function finishTimer(){
   timer = { state:"idle", startedAt:null, accumulatedMs:0 };
   persistTimer();
   renderTimer();
+  persistTimerRemote();
   openSaveSheet(elapsedMs);
 }
 
@@ -1136,17 +1143,23 @@ document.getElementById("saveBtn").onclick = async () => {
   await saveSession(session);
 };
 
-async function persistSessionsRemote(){
+async function persistSessionRemote(session){
   if (!fb.ready) return;
-  try{ await fbFns.setDoc(sessionsDocRef, { list: sessions }); }
+  try{ await fbFns.setDoc(fbFns.doc(sessionsColRef, session.id), session); }
   catch(e){ console.error("Firestore session write failed:", e); }
+}
+
+async function deleteSessionRemote(id){
+  if (!fb.ready) return;
+  try{ await fbFns.deleteDoc(fbFns.doc(sessionsColRef, id)); }
+  catch(e){ console.error("Firestore session delete failed:", e); }
 }
 
 async function saveSession(session){
   sessions.unshift(session);
   persistSessions();
   renderAll();
-  await persistSessionsRemote();
+  await persistSessionRemote(session);
 }
 
 /* =========================================================================
@@ -1301,14 +1314,14 @@ async function updateSession(session){
   if (idx !== -1) sessions[idx] = session;
   persistSessions();
   renderAll();
-  await persistSessionsRemote();
+  await persistSessionRemote(session);
 }
 
 async function deleteSession(id){
   sessions = sessions.filter(x => x.id !== id);
   persistSessions();
   renderAll();
-  await persistSessionsRemote();
+  await deleteSessionRemote(id);
 }
 
 function renderAll(){
@@ -1431,15 +1444,35 @@ document.getElementById("exportBtn").onclick = () => {
 
 /* =========================================================================
    FIREBASE (optional — local-only if not configured)
-   No login: this mirrors the baby tracker's approach — one shared Firestore
-   document synced to every device that opens this page, no sign-in step.
-   That means anyone with your Firebase config could read/write it, same
-   trade-off the baby tracker makes; fine for a private, unlisted personal
-   tool. See INSTRUCTIONS.md for the security rules this needs.
+   No login: one shared Firebase project synced to every device that opens
+   this page, no sign-in step. That means anyone with your Firebase config
+   could read/write it — fine for a private, unlisted personal tool.
+
+   DATA-SAFETY DESIGN (read this before changing the sync layer):
+   Sessions used to live as one big array inside a single Firestore document,
+   rewritten wholesale on every save/edit/delete. That meant *any* device
+   with a stale or empty local copy could — and once did — stomp the entire
+   shared history in one write, e.g. after Firestore rules were briefly
+   broken and a device reconnected with a cache that looked "empty."
+   To make that class of bug structurally impossible:
+     - Each session is now its own Firestore document (guitarPractice/
+       sessions/items/{sessionId}). Saving/editing/deleting a session only
+       ever touches that one document — nothing can overwrite the rest of
+       the collection in a single write, no matter what any device's local
+       state looks like.
+     - The old array-doc (guitarPractice/sessions) is left untouched
+       forever as a passive backup / migration source. It is read once
+       (never written again) to seed the new collection the first time a
+       device connects after this change.
+     - If a live sessions snapshot ever comes back empty right after we'd
+       previously seen a healthy history, that's treated as suspicious
+       (a rules/connectivity glitch) rather than truth — the app keeps
+       showing the last known-good local copy and flags it, instead of
+       quietly wiping the list.
    ========================================================================= */
 let fbFns = {};
-let sessionsDocRef, settingsDocRef;
-let hasSeededSessions = false;
+let sessionsColRef, legacySessionsDocRef, settingsDocRef, timerDocRef;
+let lastLocalTimerUpdateAt = 0;
 
 function markSyncOnline(){ document.getElementById("syncDot").classList.remove("offline"); }
 function markSyncOffline(){ document.getElementById("syncDot").classList.add("offline"); }
@@ -1455,19 +1488,24 @@ async function initFirebase(){
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
     ]);
     fbFns = {
-      getFirestore: fsMod.getFirestore, doc: fsMod.doc, setDoc: fsMod.setDoc,
-      onSnapshot: fsMod.onSnapshot
+      getFirestore: fsMod.getFirestore, doc: fsMod.doc, collection: fsMod.collection,
+      setDoc: fsMod.setDoc, deleteDoc: fsMod.deleteDoc,
+      getDoc: fsMod.getDoc, getDocs: fsMod.getDocs, onSnapshot: fsMod.onSnapshot
     };
 
     fb.app = initializeApp(firebaseConfig);
     fb.db = fbFns.getFirestore(fb.app);
-    sessionsDocRef = fbFns.doc(fb.db, "guitarPractice", "sessions");
+    legacySessionsDocRef = fbFns.doc(fb.db, "guitarPractice", "sessions");
+    sessionsColRef = fbFns.collection(fb.db, "guitarPractice", "sessions", "items");
     settingsDocRef = fbFns.doc(fb.db, "guitarPractice", "settings");
+    timerDocRef = fbFns.doc(fb.db, "guitarPractice", "timer");
     fb.ready = true;
 
     document.getElementById("statusLine").textContent = "Syncing — every device that opens this page shares the same log.";
+    await migrateLegacySessionsIfNeeded();
     subscribeSessions();
     subscribeSettings();
+    subscribeTimer();
   } catch(e){
     console.error("Firebase init failed:", e);
     document.getElementById("statusLine").textContent = "Couldn't connect to Firebase — running local-only for now.";
@@ -1475,20 +1513,54 @@ async function initFirebase(){
   }
 }
 
-function subscribeSessions(){
-  const { onSnapshot, setDoc } = fbFns;
-  onSnapshot(sessionsDocRef, async (snap) => {
-    if (snap.exists() && Array.isArray(snap.data().list)){
-      sessions = snap.data().list;
-      persistSessions();
-      renderAll();
-    } else if (!hasSeededSessions){
-      // Nothing in Firestore yet — seed it with whatever's already on this
-      // device instead of wiping local history down to nothing.
-      hasSeededSessions = true;
-      try{ await setDoc(sessionsDocRef, { list: sessions }); }
-      catch(e){ console.error("Seeding sessions failed:", e); }
+// One-time, additive-only migration from the old single-array document into
+// the new per-session collection. Runs at most once per device (flagged in
+// localStorage) and NEVER deletes or rewrites the legacy doc — it's read
+// only, so it stays intact as a fallback no matter how many times this runs.
+async function migrateLegacySessionsIfNeeded(){
+  if (localStorage.getItem(LS_MIGRATED) === "1") return;
+  try{
+    const { getDoc, getDocs, setDoc, doc } = fbFns;
+    const [legacySnap, existingItemsSnap] = await Promise.all([
+      getDoc(legacySessionsDocRef),
+      getDocs(sessionsColRef)
+    ]);
+    if (legacySnap.exists() && Array.isArray(legacySnap.data().list) && existingItemsSnap.empty){
+      const legacyList = legacySnap.data().list;
+      for (const s of legacyList){
+        if (!s || !s.id) continue;
+        await setDoc(doc(sessionsColRef, s.id), s, { merge:true });
+      }
+      console.log(`Migrated ${legacyList.length} session(s) from the legacy document into the per-session collection.`);
     }
+    localStorage.setItem(LS_MIGRATED, "1");
+  } catch(e){
+    // Non-fatal: the legacy doc is untouched either way, so nothing is lost.
+    console.error("Legacy session migration failed (legacy doc left untouched):", e);
+  }
+}
+
+function subscribeSessions(){
+  const { onSnapshot } = fbFns;
+  onSnapshot(sessionsColRef, (snap) => {
+    const remoteSessions = snap.docs.map(d => d.data());
+    const lastKnownCount = parseInt(localStorage.getItem(LS_LAST_REMOTE_COUNT) || "0", 10);
+
+    if (remoteSessions.length === 0 && lastKnownCount > 3){
+      // We'd previously synced a healthy history, and now the collection
+      // looks empty. That's far more likely a transient rules/cache glitch
+      // than every session actually vanishing — don't touch local data or
+      // the UI, just surface it so it can be checked.
+      console.warn(`Sessions came back empty from Firestore, but ${lastKnownCount} were last synced. Not touching local data — check Firestore rules/connectivity before trusting this.`);
+      document.getElementById("statusLine").textContent = `⚠️ Sync looks empty (expected ~${lastKnownCount} sessions) — showing your last saved copy, nothing deleted. Check your Firestore rules.`;
+      markSyncOffline();
+      return;
+    }
+
+    sessions = remoteSessions.sort((a, b) => b.startedAt - a.startedAt);
+    persistSessions();
+    localStorage.setItem(LS_LAST_REMOTE_COUNT, String(sessions.length));
+    renderAll();
     markSyncOnline();
   }, (err) => {
     console.error("sessions onSnapshot error:", err);
@@ -1517,6 +1589,58 @@ async function saveUserMeta(){
     const { setDoc } = fbFns;
     await setDoc(settingsDocRef, { dailyGoalMin }, { merge:true });
   } catch(e){ console.error(e); }
+}
+
+/* =========================================================================
+   TIMER + CURRENT DRILL SYNC
+   A single small doc holding "what's happening right now" — timer state
+   and the active drill. Unlike sessions, this is ephemeral/derived state,
+   not history, so a full overwrite here carries none of the same risk:
+   worst case if something goes wrong is the live display resets, nothing
+   is lost. Last-write-wins by timestamp; each device only adopts a remote
+   update if it's newer than the last change it made itself, so a device's
+   own writes don't boomerang back and cause a visible flicker.
+   ========================================================================= */
+function persistTimerRemote(){
+  if (!fb.ready) return;
+  const now = Date.now();
+  lastLocalTimerUpdateAt = now;
+  const payload = { timer, drillName: currentDrill.name, drillCat: currentDrill.cat, updatedAt: now };
+  fbFns.setDoc(timerDocRef, payload).catch(e => console.error("Firestore timer write failed:", e));
+}
+
+function subscribeTimer(){
+  const { onSnapshot } = fbFns;
+  onSnapshot(timerDocRef, (snap) => {
+    if (snap.exists()){
+      const data = snap.data();
+      if (typeof data.updatedAt === "number" && data.updatedAt > lastLocalTimerUpdateAt){
+        lastLocalTimerUpdateAt = data.updatedAt;
+
+        timer = data.timer || { state:"idle", startedAt:null, accumulatedMs:0 };
+        persistTimer();
+
+        if (data.drillName){
+          const matched = DRILLS.find(d => d.name === data.drillName && d.cat === data.drillCat)
+                        || DRILLS.find(d => d.name === data.drillName);
+          if (matched){
+            currentDrill = matched;
+            activeCat = matched.cat;
+            localStorage.setItem(LS_DRILL, JSON.stringify(matched));
+          }
+        }
+
+        if (timer.state === "running") ensureTick(); else stopTick();
+        renderDrillCurrent();
+        renderCatTabs();
+        renderTimer();
+      }
+    }
+    markSyncOnline();
+  }, (err) => {
+    console.error("timer onSnapshot error:", err);
+    markSyncOffline();
+  });
 }
 
 /* =========================================================================
