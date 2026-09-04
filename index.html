@@ -1498,6 +1498,18 @@ initFirebase();
 
 // keep timer display correct when returning to a backgrounded tab
 document.addEventListener("visibilitychange", () => { if (!document.hidden) renderTimer(); });
+
+// Firefox doesn't reliably hand a mostly-vertical wheel scroll off to the page
+// when the cursor is over a horizontal-only overflow strip (like the category
+// tabs) — it can just swallow it instead of scrolling the page. Forward it
+// manually so scrolling past the tabs works the same in every browser.
+document.getElementById("catTabs").addEventListener("wheel", (e) => {
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)){
+    window.scrollBy(0, e.deltaY);
+    e.preventDefault();
+  }
+}, { passive: false });
+
 </script>
 </body>
 </html>
