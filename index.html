@@ -295,6 +295,27 @@
   }
   .drill-current .name{ font-size:15px; font-weight:600; }
   .drill-current .desc{ font-size:12.5px; color:var(--cream-dim); margin-top:4px; line-height:1.4; }
+
+  /* ---------- live lap chips (drill switches mid-session) ---------- */
+  .live-laps{
+    display:flex; flex-wrap:wrap; gap:6px;
+    margin-top:10px;
+  }
+  .live-laps:empty{ margin-top:0; }
+  .lap-chip{
+    font-size:11px;
+    padding:5px 10px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    color:var(--cream-faint);
+    background:var(--bg-2);
+    font-family:"Space Mono",monospace;
+  }
+  .lap-chip.current{
+    border-color:var(--amber-line);
+    color:var(--amber);
+    background:var(--amber-soft);
+  }
   .shuffle-btn{
     flex-shrink:0;
     width:32px; height:32px;
@@ -330,7 +351,7 @@
     border-color:var(--line-strong);
   }
   .drill-list{ display:flex; flex-direction:column; gap:6px; max-height:0; overflow:hidden; transition:max-height .25s ease; }
-  .drill-list.open{ max-height:60vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .drill-list.open{ max-height:640px; }
   .drill-item{
     text-align:left;
     background:transparent;
@@ -429,6 +450,7 @@
   .session-row .left .name{ font-size:13.5px; font-weight:600; }
   .session-row .left .meta{ font-size:11.5px; color:var(--cream-faint); margin-top:2px; }
   .session-row .dur{ font-family:"Space Mono",monospace; font-size:14px; color:var(--cream-dim); }
+  .lap-chain{ margin-top:2px; opacity:.85; }
   .session-row .row-actions{ display:flex; gap:6px; margin-left:10px; flex-shrink:0; }
   .row-icon-btn{
     width:26px; height:26px; border-radius:50%;
@@ -470,6 +492,12 @@
   }
   .sheet h3{ margin:0 0 4px; font-size:17px; }
   .sheet .sheet-sub{ font-size:12.5px; color:var(--cream-faint); margin-bottom:16px; }
+  .lap-breakdown{ display:flex; flex-direction:column; gap:6px; margin:-4px 0 16px; }
+  .lap-breakdown .lap-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--bg-2); border-radius:8px; padding:8px 11px; font-size:13px;
+  }
+  .lap-breakdown .lap-row .lap-dur{ color:var(--cream-dim); }
   .sheet textarea{
     width:100%;
     background:var(--bg-2);
@@ -505,102 +533,9 @@
   .status-line{ font-size:12px; color:var(--cream-faint); margin-top:10px; line-height:1.5; }
 
   footer{ text-align:center; color:var(--cream-faint); font-size:11px; margin-top:8px; opacity:.7; }
-
-  /* ---------- pull to refresh ---------- */
-  .pull-indicator{
-    position:fixed;
-    top:var(--safe-top);
-    left:0; right:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:7px;
-    height:0;
-    overflow:visible;
-    color:var(--cream-dim);
-    font-size:12px;
-    transform:translateY(-46px);
-    opacity:0;
-    z-index:60;
-    pointer-events:none;
-    transition:opacity .12s linear;
-  }
-  .pull-indicator svg{ width:17px; height:17px; transition:transform .15s; flex-shrink:0; }
-  .pull-indicator.ready svg{ transform:rotate(180deg); }
-  .pull-indicator.ready{ color:var(--amber); }
-  .pull-indicator.loading svg{ animation:pull-spin .7s linear infinite; }
-  .pull-indicator.loading{ transform:translateY(4px); opacity:1; transition:none; }
-  @keyframes pull-spin{ to{ transform:rotate(360deg); } }
-
-  /* ---------- drill browser (search + responsive layout) ---------- */
-  .drill-search-input{
-    width:100%;
-    background:var(--bg-2);
-    border:1px solid var(--line);
-    border-radius:10px;
-    color:var(--cream);
-    padding:9px 11px;
-    font-family:inherit;
-    font-size:13px;
-    margin-bottom:10px;
-  }
-  .drill-search-input::placeholder{ color:var(--cream-faint); }
-  .drill-search-input:focus{ outline:none; border-color:var(--amber-line); }
-  .item-cat{
-    display:inline-block;
-    font-size:9.5px;
-    font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:.05em;
-    color:var(--amber);
-    background:var(--amber-soft);
-    border-radius:5px;
-    padding:2px 6px;
-    margin-right:6px;
-    vertical-align:middle;
-  }
-  .drill-count{ font-weight:400; color:var(--cream-faint); }
-
-  @media (min-width:720px){
-    .app{ max-width:960px; }
-    .stat-row{ gap:14px; }
-    .panel{ padding:22px 24px; }
-    .drill-browser{
-      display:grid;
-      grid-template-columns:190px 1fr;
-      gap:22px;
-      align-items:start;
-    }
-    .cat-tabs{
-      flex-direction:column;
-      overflow:visible;
-      padding-bottom:0;
-      margin:0;
-      gap:5px;
-    }
-    .cat-tab{ width:100%; text-align:left; }
-    .drill-list.open{
-      display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
-      gap:10px;
-      max-height:none;
-      overflow:visible;
-      align-content:start;
-    }
-    .timer-panel{ max-width:420px; margin:0 auto; }
-  }
-
-  @media (min-width:960px){
-    .app{ max-width:1080px; }
-  }
 </style>
 </head>
 <body>
-
-<div class="pull-indicator" id="pullIndicator">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
-  <span id="pullLabel">Pull to refresh</span>
-</div>
 
 <div class="app">
 
@@ -662,16 +597,15 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
       </button>
     </div>
+
+    <div class="live-laps" id="liveLaps"></div>
   </div>
 
   <!-- ===== DRILL PICKER ===== -->
   <div class="panel">
-    <div class="panel-title">Browse drills <span class="drill-count num" id="drillCount"></span></div>
-    <input type="text" class="drill-search-input" id="drillSearch" placeholder="Search drills by name or description…" autocomplete="off">
-    <div class="drill-browser">
-      <div class="cat-tabs" id="catTabs"></div>
-      <div class="drill-list open" id="drillList"></div>
-    </div>
+    <div class="panel-title">Browse drills</div>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="drill-list open" id="drillList"></div>
   </div>
 
   <!-- ===== TODAY / STREAK ===== -->
@@ -731,6 +665,7 @@
   <div class="sheet">
     <h3 class="display">Nice work</h3>
     <div class="sheet-sub" id="saveSummary">12 minutes on Pentatonic shape 1 → 4</div>
+    <div class="lap-breakdown" id="saveLapBreakdown" style="display:none;"></div>
     <textarea id="noteInput" placeholder="Anything worth remembering? (optional)"></textarea>
     <div class="sheet-actions">
       <button class="btn-ghost" id="discardBtn">Discard</button>
@@ -797,7 +732,6 @@ let fb = { app:null, db:null, ready:false };
    Curriculum lives in ./drills.js, not here — see that file to add/edit drills.
    ========================================================================= */
 const CATEGORIES = [...new Set(DRILLS.map(d => d.cat))];
-const ALL_CAT = "All";
 
 /* =========================================================================
    STATE
@@ -807,8 +741,6 @@ const LS_TIMER = "gp_timer_state";
 const LS_GOAL = "gp_daily_goal_min";
 const LS_DRILL = "gp_current_drill";
 const LS_BPM = "gp_bpm";
-const LS_MIGRATED = "gp_migrated_sessions_v1";
-const LS_LAST_REMOTE_COUNT = "gp_last_remote_session_count";
 
 let sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || "[]");
 let dailyGoalMin = parseInt(localStorage.getItem(LS_GOAL) || "30", 10);
@@ -817,10 +749,12 @@ let currentDrill = JSON.parse(localStorage.getItem(LS_DRILL) || "null") || DRILL
 let activeCat = currentDrill.cat;
 
 let timer = JSON.parse(localStorage.getItem(LS_TIMER) || "null") || {
-  state: "idle", startedAt: null, accumulatedMs: 0
+  state: "idle", startedAt: null, accumulatedMs: 0, laps: []
 };
+if (!timer.laps) timer.laps = []; // backward-compat for timer state saved before laps existed
 let tickHandle = null;
 let pendingElapsedMs = 0;
+let pendingLaps = [];
 let editingTimerStart = false;
 let editingSessionId = null;
 let lastEditRenderId = null;
@@ -890,77 +824,51 @@ function renderDrillCurrent(){
 function renderCatTabs(){
   const wrap = document.getElementById("catTabs");
   wrap.innerHTML = "";
-  [ALL_CAT, ...CATEGORIES].forEach(cat => {
+  CATEGORIES.forEach(cat => {
     const btn = document.createElement("button");
     btn.className = "cat-tab" + (cat === activeCat ? " active" : "");
     btn.textContent = cat;
-    btn.onclick = () => {
-      activeCat = cat;
-      const search = document.getElementById("drillSearch");
-      if (search) search.value = "";
-      renderCatTabs();
-      renderDrillList();
-    };
+    btn.onclick = () => { activeCat = cat; renderCatTabs(); renderDrillList(); };
     wrap.appendChild(btn);
   });
 }
 
 function renderDrillList(){
   const wrap = document.getElementById("drillList");
-  const countEl = document.getElementById("drillCount");
   wrap.innerHTML = "";
-
-  const q = (document.getElementById("drillSearch")?.value || "").trim().toLowerCase();
-  let list;
-  let showCatBadge = false;
-
-  if (q){
-    list = DRILLS.filter(d =>
-      d.name.toLowerCase().includes(q) ||
-      d.desc.toLowerCase().includes(q) ||
-      d.cat.toLowerCase().includes(q)
-    );
-    showCatBadge = true;
-  } else if (activeCat === ALL_CAT){
-    list = DRILLS;
-    showCatBadge = true;
-  } else {
-    list = DRILLS.filter(d => d.cat === activeCat);
-  }
-
-  if (countEl) countEl.textContent = q || activeCat === ALL_CAT ? `${list.length}` : "";
-
-  if (!list.length){
-    wrap.innerHTML = `<div class="empty-hint">No drills match "${escapeHtml(q)}".</div>`;
-    return;
-  }
-
-  list.forEach(d => {
+  DRILLS.filter(d => d.cat === activeCat).forEach(d => {
     const item = document.createElement("button");
     item.className = "drill-item" + (d.name === currentDrill.name ? " selected" : "");
-    const catBadge = showCatBadge ? `<span class="item-cat">${escapeHtml(d.cat)}</span>` : "";
-    item.innerHTML = `<div class="name">${catBadge}${escapeHtml(d.name)}${d.bpm ? ` <span class="num" style="color:var(--cream-faint);font-size:11px;">· ${d.bpm} bpm</span>` : ""}</div><div class="desc">${escapeHtml(d.desc)}</div>`;
+    item.innerHTML = `<div class="name">${d.name}${d.bpm ? ` <span class="num" style="color:var(--cream-faint);font-size:11px;">· ${d.bpm} bpm</span>` : ""}</div><div class="desc">${d.desc}</div>`;
     item.onclick = () => { setDrill(d); };
     wrap.appendChild(item);
   });
 }
 
 function setDrill(d){
+  const isActiveSession = timer.state === "running" || timer.state === "paused";
+  const isDifferentDrill = d.name !== currentDrill.name;
+  if (isActiveSession && isDifferentDrill){
+    const atMs = currentElapsedMs();
+    const lastMark = timer.laps[timer.laps.length - 1];
+    if (!lastMark || lastMark.name !== d.name){
+      timer.laps.push({ atMs, name: d.name, cat: d.cat });
+      persistTimer();
+    }
+  }
   currentDrill = d;
   activeCat = d.cat;
   localStorage.setItem(LS_DRILL, JSON.stringify(d));
   if (d.bpm) setBpm(d.bpm);
   renderDrillCurrent();
   renderCatTabs();
-  persistTimerRemote();
+  renderTimer();
 }
 
 document.getElementById("shuffleBtn").onclick = () => {
   const pool = DRILLS.filter(d => d.name !== currentDrill.name);
   setDrill(pool[Math.floor(Math.random() * pool.length)]);
 };
-
-document.getElementById("drillSearch").addEventListener("input", renderDrillList);
 
 /* =========================================================================
    TIMER
@@ -990,6 +898,26 @@ function renderTimer(){
 
   renderTransport();
   renderTimerStartEdit();
+  renderLiveLaps(elapsed);
+}
+
+// Shows a chip per drill once the person has switched drills mid-session —
+// hidden entirely for the common single-drill session so it doesn't clutter
+// the screen when there's nothing to break down yet.
+function renderLiveLaps(elapsedMs){
+  const container = document.getElementById("liveLaps");
+  if (timer.state === "idle" || timer.laps.length < 2){
+    container.style.display = "none";
+    container.innerHTML = "";
+    return;
+  }
+  container.style.display = "";
+  const breakdown = computeLapBreakdown(timer.laps, elapsedMs);
+  container.innerHTML = breakdown.map((l, i) => {
+    const isCurrent = i === breakdown.length - 1 && timer.state === "running";
+    const mins = Math.max(1, Math.round(l.durationSec / 60));
+    return `<span class="lap-chip${isCurrent ? " current" : ""}">${escapeHtml(l.name)} · ${mins}m</span>`;
+  }).join("");
 }
 
 // Effective start time of the current session = now minus however much
@@ -1010,7 +938,6 @@ function adjustSessionStart(newStartMs){
     timer.accumulatedMs = desiredElapsed;
   }
   persistTimer();
-  persistTimerRemote();
 }
 
 let timerStartEditRendered = false;
@@ -1069,12 +996,15 @@ function renderTransport(){
 }
 
 function startTimer(){
+  const wasIdle = timer.state === "idle";
   timer.state = "running";
   timer.startedAt = Date.now();
+  if (wasIdle){
+    timer.laps = [{ atMs:0, name: currentDrill.name, cat: currentDrill.cat }];
+  }
   persistTimer();
   ensureTick();
   renderTimer();
-  persistTimerRemote();
 }
 
 function pauseTimer(){
@@ -1084,17 +1014,29 @@ function pauseTimer(){
   persistTimer();
   stopTick();
   renderTimer();
-  persistTimerRemote();
+}
+
+// Turns the raw list of "switched to X at Ms" marks into per-drill durations,
+// closing the last open segment off at whatever the total elapsed time is.
+function computeLapBreakdown(marks, totalElapsedMs){
+  if (!marks || marks.length === 0) return [];
+  const sorted = [...marks].sort((a, b) => a.atMs - b.atMs);
+  return sorted
+    .map((m, i) => {
+      const end = i < sorted.length - 1 ? sorted[i + 1].atMs : totalElapsedMs;
+      return { name: m.name, cat: m.cat, durationSec: Math.max(0, Math.round((end - m.atMs) / 1000)) };
+    })
+    .filter(l => l.durationSec > 0);
 }
 
 function finishTimer(){
   const elapsedMs = currentElapsedMs();
   stopTick();
   pendingElapsedMs = elapsedMs;
-  timer = { state:"idle", startedAt:null, accumulatedMs:0 };
+  pendingLaps = computeLapBreakdown(timer.laps, elapsedMs);
+  timer = { state:"idle", startedAt:null, accumulatedMs:0, laps:[] };
   persistTimer();
   renderTimer();
-  persistTimerRemote();
   openSaveSheet(elapsedMs);
 }
 
@@ -1121,8 +1063,23 @@ document.getElementById("targetRow").addEventListener("click", (e) => {
 function openSaveSheet(elapsedMs){
   const mins = Math.max(1, Math.round(elapsedMs / 60000));
   document.getElementById("saveSummary").textContent = `${mins} minute${mins === 1 ? "" : "s"} on ${currentDrill.name}`;
+  renderSaveLapBreakdown();
   document.getElementById("noteInput").value = "";
   document.getElementById("saveBackdrop").classList.add("open");
+}
+function renderSaveLapBreakdown(){
+  const wrap = document.getElementById("saveLapBreakdown");
+  if (pendingLaps.length <= 1){
+    wrap.style.display = "none";
+    wrap.innerHTML = "";
+    return;
+  }
+  wrap.style.display = "";
+  wrap.innerHTML = pendingLaps.map(l => `
+    <div class="lap-row">
+      <span>${escapeHtml(l.name)}</span>
+      <span class="lap-dur num">${Math.max(1, Math.round(l.durationSec / 60))}m</span>
+    </div>`).join("");
 }
 function closeSaveSheet(){
   document.getElementById("saveBackdrop").classList.remove("open");
@@ -1137,29 +1094,24 @@ document.getElementById("saveBtn").onclick = async () => {
     topic: currentDrill.name,
     category: currentDrill.cat,
     bpm: currentDrill.bpm || null,
-    note
+    note,
+    laps: pendingLaps.length > 1 ? pendingLaps : []
   };
   closeSaveSheet();
   await saveSession(session);
 };
 
-async function persistSessionRemote(session){
+async function persistSessionsRemote(){
   if (!fb.ready) return;
-  try{ await fbFns.setDoc(fbFns.doc(sessionsColRef, session.id), session); }
+  try{ await fbFns.setDoc(sessionsDocRef, { list: sessions }); }
   catch(e){ console.error("Firestore session write failed:", e); }
-}
-
-async function deleteSessionRemote(id){
-  if (!fb.ready) return;
-  try{ await fbFns.deleteDoc(fbFns.doc(sessionsColRef, id)); }
-  catch(e){ console.error("Firestore session delete failed:", e); }
 }
 
 async function saveSession(session){
   sessions.unshift(session);
   persistSessions();
   renderAll();
-  await persistSessionRemote(session);
+  await persistSessionsRemote();
 }
 
 /* =========================================================================
@@ -1231,6 +1183,7 @@ function renderHistory(){
       <div class="left">
         <div class="name">${escapeHtml(s.topic)}</div>
         <div class="meta">${dateStr}${s.note ? " · " + escapeHtml(s.note) : ""}</div>
+        ${s.laps && s.laps.length > 1 ? `<div class="meta lap-chain">${s.laps.map(l => `${escapeHtml(l.name)} ${Math.max(1, Math.round(l.durationSec/60))}m`).join(" → ")}</div>` : ""}
       </div>
       <div class="dur">${Math.round(s.durationSec/60)}m</div>
       <div class="row-actions">
@@ -1314,14 +1267,14 @@ async function updateSession(session){
   if (idx !== -1) sessions[idx] = session;
   persistSessions();
   renderAll();
-  await persistSessionRemote(session);
+  await persistSessionsRemote();
 }
 
 async function deleteSession(id){
   sessions = sessions.filter(x => x.id !== id);
   persistSessions();
   renderAll();
-  await deleteSessionRemote(id);
+  await persistSessionsRemote();
 }
 
 function renderAll(){
@@ -1444,35 +1397,15 @@ document.getElementById("exportBtn").onclick = () => {
 
 /* =========================================================================
    FIREBASE (optional — local-only if not configured)
-   No login: one shared Firebase project synced to every device that opens
-   this page, no sign-in step. That means anyone with your Firebase config
-   could read/write it — fine for a private, unlisted personal tool.
-
-   DATA-SAFETY DESIGN (read this before changing the sync layer):
-   Sessions used to live as one big array inside a single Firestore document,
-   rewritten wholesale on every save/edit/delete. That meant *any* device
-   with a stale or empty local copy could — and once did — stomp the entire
-   shared history in one write, e.g. after Firestore rules were briefly
-   broken and a device reconnected with a cache that looked "empty."
-   To make that class of bug structurally impossible:
-     - Each session is now its own Firestore document (guitarPractice/
-       sessions/items/{sessionId}). Saving/editing/deleting a session only
-       ever touches that one document — nothing can overwrite the rest of
-       the collection in a single write, no matter what any device's local
-       state looks like.
-     - The old array-doc (guitarPractice/sessions) is left untouched
-       forever as a passive backup / migration source. It is read once
-       (never written again) to seed the new collection the first time a
-       device connects after this change.
-     - If a live sessions snapshot ever comes back empty right after we'd
-       previously seen a healthy history, that's treated as suspicious
-       (a rules/connectivity glitch) rather than truth — the app keeps
-       showing the last known-good local copy and flags it, instead of
-       quietly wiping the list.
+   No login: this mirrors the baby tracker's approach — one shared Firestore
+   document synced to every device that opens this page, no sign-in step.
+   That means anyone with your Firebase config could read/write it, same
+   trade-off the baby tracker makes; fine for a private, unlisted personal
+   tool. See INSTRUCTIONS.md for the security rules this needs.
    ========================================================================= */
 let fbFns = {};
-let sessionsColRef, legacySessionsDocRef, settingsDocRef, timerDocRef;
-let lastLocalTimerUpdateAt = 0;
+let sessionsDocRef, settingsDocRef;
+let hasSeededSessions = false;
 
 function markSyncOnline(){ document.getElementById("syncDot").classList.remove("offline"); }
 function markSyncOffline(){ document.getElementById("syncDot").classList.add("offline"); }
@@ -1488,24 +1421,19 @@ async function initFirebase(){
       import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
     ]);
     fbFns = {
-      getFirestore: fsMod.getFirestore, doc: fsMod.doc, collection: fsMod.collection,
-      setDoc: fsMod.setDoc, deleteDoc: fsMod.deleteDoc,
-      getDoc: fsMod.getDoc, getDocs: fsMod.getDocs, onSnapshot: fsMod.onSnapshot
+      getFirestore: fsMod.getFirestore, doc: fsMod.doc, setDoc: fsMod.setDoc,
+      onSnapshot: fsMod.onSnapshot
     };
 
     fb.app = initializeApp(firebaseConfig);
     fb.db = fbFns.getFirestore(fb.app);
-    legacySessionsDocRef = fbFns.doc(fb.db, "guitarPractice", "sessions");
-    sessionsColRef = fbFns.collection(fb.db, "guitarPractice", "sessions", "items");
+    sessionsDocRef = fbFns.doc(fb.db, "guitarPractice", "sessions");
     settingsDocRef = fbFns.doc(fb.db, "guitarPractice", "settings");
-    timerDocRef = fbFns.doc(fb.db, "guitarPractice", "timer");
     fb.ready = true;
 
     document.getElementById("statusLine").textContent = "Syncing — every device that opens this page shares the same log.";
-    await migrateLegacySessionsIfNeeded();
     subscribeSessions();
     subscribeSettings();
-    subscribeTimer();
   } catch(e){
     console.error("Firebase init failed:", e);
     document.getElementById("statusLine").textContent = "Couldn't connect to Firebase — running local-only for now.";
@@ -1513,54 +1441,20 @@ async function initFirebase(){
   }
 }
 
-// One-time, additive-only migration from the old single-array document into
-// the new per-session collection. Runs at most once per device (flagged in
-// localStorage) and NEVER deletes or rewrites the legacy doc — it's read
-// only, so it stays intact as a fallback no matter how many times this runs.
-async function migrateLegacySessionsIfNeeded(){
-  if (localStorage.getItem(LS_MIGRATED) === "1") return;
-  try{
-    const { getDoc, getDocs, setDoc, doc } = fbFns;
-    const [legacySnap, existingItemsSnap] = await Promise.all([
-      getDoc(legacySessionsDocRef),
-      getDocs(sessionsColRef)
-    ]);
-    if (legacySnap.exists() && Array.isArray(legacySnap.data().list) && existingItemsSnap.empty){
-      const legacyList = legacySnap.data().list;
-      for (const s of legacyList){
-        if (!s || !s.id) continue;
-        await setDoc(doc(sessionsColRef, s.id), s, { merge:true });
-      }
-      console.log(`Migrated ${legacyList.length} session(s) from the legacy document into the per-session collection.`);
-    }
-    localStorage.setItem(LS_MIGRATED, "1");
-  } catch(e){
-    // Non-fatal: the legacy doc is untouched either way, so nothing is lost.
-    console.error("Legacy session migration failed (legacy doc left untouched):", e);
-  }
-}
-
 function subscribeSessions(){
-  const { onSnapshot } = fbFns;
-  onSnapshot(sessionsColRef, (snap) => {
-    const remoteSessions = snap.docs.map(d => d.data());
-    const lastKnownCount = parseInt(localStorage.getItem(LS_LAST_REMOTE_COUNT) || "0", 10);
-
-    if (remoteSessions.length === 0 && lastKnownCount > 3){
-      // We'd previously synced a healthy history, and now the collection
-      // looks empty. That's far more likely a transient rules/cache glitch
-      // than every session actually vanishing — don't touch local data or
-      // the UI, just surface it so it can be checked.
-      console.warn(`Sessions came back empty from Firestore, but ${lastKnownCount} were last synced. Not touching local data — check Firestore rules/connectivity before trusting this.`);
-      document.getElementById("statusLine").textContent = `⚠️ Sync looks empty (expected ~${lastKnownCount} sessions) — showing your last saved copy, nothing deleted. Check your Firestore rules.`;
-      markSyncOffline();
-      return;
+  const { onSnapshot, setDoc } = fbFns;
+  onSnapshot(sessionsDocRef, async (snap) => {
+    if (snap.exists() && Array.isArray(snap.data().list)){
+      sessions = snap.data().list;
+      persistSessions();
+      renderAll();
+    } else if (!hasSeededSessions){
+      // Nothing in Firestore yet — seed it with whatever's already on this
+      // device instead of wiping local history down to nothing.
+      hasSeededSessions = true;
+      try{ await setDoc(sessionsDocRef, { list: sessions }); }
+      catch(e){ console.error("Seeding sessions failed:", e); }
     }
-
-    sessions = remoteSessions.sort((a, b) => b.startedAt - a.startedAt);
-    persistSessions();
-    localStorage.setItem(LS_LAST_REMOTE_COUNT, String(sessions.length));
-    renderAll();
     markSyncOnline();
   }, (err) => {
     console.error("sessions onSnapshot error:", err);
@@ -1590,135 +1484,6 @@ async function saveUserMeta(){
     await setDoc(settingsDocRef, { dailyGoalMin }, { merge:true });
   } catch(e){ console.error(e); }
 }
-
-/* =========================================================================
-   TIMER + CURRENT DRILL SYNC
-   A single small doc holding "what's happening right now" — timer state
-   and the active drill. Unlike sessions, this is ephemeral/derived state,
-   not history, so a full overwrite here carries none of the same risk:
-   worst case if something goes wrong is the live display resets, nothing
-   is lost. Last-write-wins by timestamp; each device only adopts a remote
-   update if it's newer than the last change it made itself, so a device's
-   own writes don't boomerang back and cause a visible flicker.
-   ========================================================================= */
-function persistTimerRemote(){
-  if (!fb.ready) return;
-  const now = Date.now();
-  lastLocalTimerUpdateAt = now;
-  const payload = { timer, drillName: currentDrill.name, drillCat: currentDrill.cat, updatedAt: now };
-  fbFns.setDoc(timerDocRef, payload).catch(e => console.error("Firestore timer write failed:", e));
-}
-
-function subscribeTimer(){
-  const { onSnapshot } = fbFns;
-  onSnapshot(timerDocRef, (snap) => {
-    if (snap.exists()){
-      const data = snap.data();
-      if (typeof data.updatedAt === "number" && data.updatedAt > lastLocalTimerUpdateAt){
-        lastLocalTimerUpdateAt = data.updatedAt;
-
-        timer = data.timer || { state:"idle", startedAt:null, accumulatedMs:0 };
-        persistTimer();
-
-        if (data.drillName){
-          const matched = DRILLS.find(d => d.name === data.drillName && d.cat === data.drillCat)
-                        || DRILLS.find(d => d.name === data.drillName);
-          if (matched){
-            currentDrill = matched;
-            activeCat = matched.cat;
-            localStorage.setItem(LS_DRILL, JSON.stringify(matched));
-          }
-        }
-
-        if (timer.state === "running") ensureTick(); else stopTick();
-        renderDrillCurrent();
-        renderCatTabs();
-        renderTimer();
-      }
-    }
-    markSyncOnline();
-  }, (err) => {
-    console.error("timer onSnapshot error:", err);
-    markSyncOffline();
-  });
-}
-
-/* =========================================================================
-   PULL TO REFRESH
-   Standalone/home-screen mode (and body{overscroll-behavior-y:none}) means
-   there's no native pull-to-refresh gesture, so this reloads the page —
-   handy for picking up a fresh copy without force-quitting the app.
-   ========================================================================= */
-(function initPullToRefresh(){
-  const indicator = document.getElementById("pullIndicator");
-  const label = document.getElementById("pullLabel");
-  if (!indicator || !label) return;
-
-  const TRIGGER_PX = 68;
-  let startY = null;
-  let pulling = false;
-  let refreshing = false;
-
-  function scrollTopAmount(){
-    return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-  }
-
-  function resetIndicator(){
-    indicator.style.transition = "";
-    indicator.style.transform = "translateY(-46px)";
-    indicator.style.opacity = "0";
-    indicator.classList.remove("ready");
-  }
-
-  document.addEventListener("touchstart", (e) => {
-    if (refreshing) return;
-    if (scrollTopAmount() <= 0 && e.touches.length === 1){
-      startY = e.touches[0].clientY;
-      pulling = true;
-      indicator.style.transition = "";
-    } else {
-      startY = null;
-      pulling = false;
-    }
-  }, { passive:true });
-
-  document.addEventListener("touchmove", (e) => {
-    if (!pulling || startY === null || refreshing) return;
-    const delta = e.touches[0].clientY - startY;
-    if (delta <= 0 || scrollTopAmount() > 0){
-      pulling = false;
-      resetIndicator();
-      return;
-    }
-    const pull = Math.min(delta * 0.5, 100);
-    indicator.style.transform = `translateY(${pull - 46}px)`;
-    indicator.style.opacity = Math.min(pull / TRIGGER_PX, 1).toFixed(2);
-    const ready = pull >= TRIGGER_PX;
-    indicator.classList.toggle("ready", ready);
-    label.textContent = ready ? "Release to refresh" : "Pull to refresh";
-    if (delta > 8) e.preventDefault();
-  }, { passive:false });
-
-  document.addEventListener("touchend", () => {
-    if (!pulling || refreshing) { pulling = false; return; }
-    pulling = false;
-    if (indicator.classList.contains("ready")){
-      refreshing = true;
-      label.textContent = "Refreshing…";
-      indicator.classList.add("loading");
-      indicator.classList.remove("ready");
-      setTimeout(() => location.reload(), 200);
-    } else {
-      indicator.style.transition = "transform .18s ease, opacity .18s ease";
-      resetIndicator();
-    }
-  });
-
-  document.addEventListener("touchcancel", () => {
-    pulling = false;
-    if (!refreshing) resetIndicator();
-  });
-})();
 
 /* =========================================================================
    BOOT
