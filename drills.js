@@ -10,9 +10,11 @@
 export const DRILLS = [
   // ---- Warm-Up ------------------------------------------------------------
   { cat:"Warm-Up", name:"Spider exercise", desc:"Chromatic 1-2-3-4 finger pattern climbing across all six strings with strict alternate picking. Classic hands-and-ears wake-up.", bpm:70 },
-  { cat:"Warm-Up", name:"Pentatonic groups of 3", desc:"Play the pentatonic scale in ascending or descending groups of three, stepping back one note between each group.", bpm:75 },
-  { cat:"Warm-Up", name:"Pentatonic groups of 4", desc:"Same idea in groups of four, stepping back two notes between groups — a common building block for faster lines.", bpm:75 },
-  { cat:"Warm-Up", name:"Pentatonic enclosures", desc:"Approach a scale tone from a half-step above and below before landing on it, ascending and descending through the shape.", bpm:null },
+  { cat:"Warm-Up", name:"Pentatonic groups of 3", desc:"Play the pentatonic scale in ascending or descending groups of three, stepping back one note between each group. Think in 3-note phrases, not a mechanical pattern.", bpm:75 },
+  { cat:"Warm-Up", name:"Pentatonic groups of 3 — legato", desc:"Same 3-note groupings, but hammer-on or pull-off whenever two notes land on the same string, for a smoother, more fluid line.", bpm:75 },
+  { cat:"Warm-Up", name:"Pentatonic groups of 4", desc:"Same idea in groups of four, stepping back two notes between groups — a common building block for longer melodic lines.", bpm:75 },
+  { cat:"Warm-Up", name:"Pentatonic groups of 4 — legato", desc:"The groups-of-4 pattern with hammer-ons and pull-offs worked in wherever two notes share a string — repeat the same two shapes across the strings.", bpm:75 },
+  { cat:"Warm-Up", name:"Pentatonic enclosures", desc:"Approach a target note from a half-step above and below before landing on it. A small move that instantly sounds more advanced and professional.", bpm:null },
   { cat:"Warm-Up", name:"Every-other-note pentatonic", desc:"Play the 1st & 3rd notes, then 2nd & 4th, skipping through the scale mostly in 4ths. Roll one finger between each pair without letting them ring together.", bpm:null },
 
   // ---- CAGED System ---------------------------------------------------------
@@ -38,6 +40,7 @@ export const DRILLS = [
   { cat:"Improvisation", name:"Call and response", desc:"Play a two-bar lick, then answer it — treat it like a conversation, not a scale run.", bpm:null },
   { cat:"Improvisation", name:"One-string solo", desc:"Improvise using only the high E string. Forces melodic thinking over shape memory.", bpm:null },
   { cat:"Improvisation", name:"Target the chord tones", desc:"Improvise through a progression, landing deliberately on the 3rd or 7th at each chord change.", bpm:null },
+  { cat:"Improvisation", name:"Groups & enclosures over a track", desc:"Take the groups-of-3/4 and enclosure phrases from the warm-up and drop them into a solo over a backing track — the point isn't the pattern, it's turning it into phrasing you'd actually use.", bpm:null },
   { cat:"Improvisation", name:"Common short phrases", desc:"Drill the classic 3- and 4-note pentatonic hammer-on/pull-off and note-skipping licks until they come out on autopilot.", bpm:null },
   { cat:"Improvisation", name:"String bending targets", desc:"Bend the ring-finger note on the G string (Shape 1) and on the B string (Shape 4) — the two most reliable, most-used bending notes in the pentatonic box.", bpm:null },
   { cat:"Improvisation", name:"Looper solo", desc:"Record a chord progression as a loop, then solo over it using the Shape 1/4 landmarks and their diagonal extensions — a full-neck soloing test.", bpm:null },
