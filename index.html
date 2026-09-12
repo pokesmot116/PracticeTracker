@@ -812,7 +812,6 @@ const LS_ACTIVE = "gp_active_timer";
 const LS_GOAL = "gp_daily_goal_min";
 const LS_DRILL = "gp_current_drill";
 const LS_BPM = "gp_bpm";
-const LS_MIGRATED = "gp_migrated_sessions_v1";
 const LS_LAST_REMOTE_COUNT = "gp_last_remote_session_count";
 
 let sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || "[]");
@@ -1543,30 +1542,38 @@ async function initFirebase(){
   }
 }
 
-// One-time, additive-only migration from the old single-array document into
-// the new per-session collection. Runs at most once per device (flagged in
-// localStorage) and NEVER deletes or rewrites the legacy doc — it's read
-// only, so it stays intact as a fallback no matter how many times this runs.
+// Reconciles the legacy single-array document into the per-session
+// collection by session id, every load. This is NOT one-time or gated on
+// the collection being empty: if an older deployed copy of this app is
+// ever used again (browser cache, a device that didn't get the update,
+// etc.) and writes new sessions into the legacy doc, those entries would
+// otherwise sit there invisibly forever, since nothing would tell the new
+// per-doc collection to go look. Diffing by id and merging in whatever's
+// missing makes this self-healing: cheap (two reads) when there's nothing
+// to do, safe to run on every load, and never overwrites or deletes a
+// session that's already in the per-doc collection.
 async function migrateLegacySessionsIfNeeded(){
-  if (localStorage.getItem(LS_MIGRATED) === "1") return;
   try{
     const { getDoc, getDocs, setDoc, doc } = fbFns;
     const [legacySnap, existingItemsSnap] = await Promise.all([
       getDoc(legacySessionsDocRef),
       getDocs(sessionsColRef)
     ]);
-    if (legacySnap.exists() && Array.isArray(legacySnap.data().list) && existingItemsSnap.empty){
-      const legacyList = legacySnap.data().list;
-      for (const s of legacyList){
-        if (!s || !s.id) continue;
-        await setDoc(doc(sessionsColRef, s.id), s, { merge:true });
-      }
-      console.log(`Migrated ${legacyList.length} session(s) from the legacy document into the per-session collection.`);
+    if (!legacySnap.exists() || !Array.isArray(legacySnap.data().list)) return;
+
+    const existingIds = new Set(existingItemsSnap.docs.map(d => d.id));
+    const legacyList = legacySnap.data().list;
+    const missing = legacyList.filter(s => s && s.id && !existingIds.has(s.id));
+
+    for (const s of missing){
+      await setDoc(doc(sessionsColRef, s.id), s, { merge: true });
     }
-    localStorage.setItem(LS_MIGRATED, "1");
+    if (missing.length){
+      console.log(`Pulled ${missing.length} session(s) from the legacy document that weren't yet in the per-session collection.`);
+    }
   } catch(e){
     // Non-fatal: the legacy doc is untouched either way, so nothing is lost.
-    console.error("Legacy session migration failed (legacy doc left untouched):", e);
+    console.error("Legacy session reconciliation failed (legacy doc left untouched):", e);
   }
 }
 
