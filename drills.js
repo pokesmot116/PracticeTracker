@@ -48,6 +48,17 @@ export const DRILLS = [
   { cat:"Repertoire", name:"Mayer-style groove", desc:"Palm-muted rhythm pocket, then layer in a clean lead line over the top.", bpm:null },
   { cat:"Repertoire", name:"Neo-soul voicings", desc:"Work through 9th/11th/13th chord voicings with smooth voice leading between changes.", bpm:null },
 
+  // ---- Neo-Soul (Soejima) ---------------------------------------------------
+  { cat:"Neo-Soul (Soejima)", name:"Chord-to-line blur", desc:"Play a chord, then peel off one note at a time into a short single-note line that resolves back into the next chord — chords and lines blurring into one continuous idea instead of two separate moves.", bpm:null },
+  { cat:"Neo-Soul (Soejima)", name:"Arpeggio-over-pentatonic overlay", desc:"Over a jazz-standard progression (Autumn Leaves works well), alternate between comping the full chord and outlining it with a quick arpeggio lick before the next change — the bridge from scale-thinking to chord-tone phrasing.", bpm:null },
+  { cat:"Neo-Soul (Soejima)", name:"Behind-the-beat phrasing", desc:"Loop a slow, laid-back backing track and deliberately let every phrase land a hair behind the click instead of right on it. Compare a pass played dead on the beat to one played behind it.", bpm:70 },
+  { cat:"Neo-Soul (Soejima)", name:"Space and restraint", desc:"Play a two-bar phrase, then rest a full two bars before answering it — no filling the gap. The discipline to leave space is the exercise, not the notes.", bpm:null },
+  { cat:"Neo-Soul (Soejima)", name:"Vocal bend and fade", desc:"Pick one note. Bend up, add vibrato, release, and let it decay — shape it like a sung note swelling and fading, with nothing picked after the initial attack.", bpm:null },
+  { cat:"Neo-Soul (Soejima)", name:"Tone-roll comparison", desc:"Roll the tone knob back to around 5-6 on the P-90s and play a slow melodic passage, then repeat it with the tone wide open. Listen for how much the rolled-back tone smooths out the attack.", bpm:null },
+  { cat:"Neo-Soul (Soejima)", name:"Compressed vs. dry dynamics", desc:"Play a chord passage with the compressor engaged (light ratio), then switch it off and play the same passage. Notice the difference in touch dynamics and sustain, and adjust picking-hand attack to compensate for each.", bpm:null },
+  { cat:"Neo-Soul (Soejima)", name:"Extended voicing voice-leading", desc:"Re-voice a jazz standard's changes using maj7/m7/dominant 9 shapes instead of basic triads, keeping the voice leading as smooth as possible between chords.", bpm:null },
+  { cat:"Neo-Soul (Soejima)", name:"Transcribe a Soejima lick", desc:"Pick 4-8 bars from one of his covers (\"Feel Like Makin' Love\" is a good start) and work it out entirely by ear — phrasing and dynamics included, not just the notes.", bpm:null },
+
   // ---- Technique --------------------------------------------------------
   { cat:"Technique", name:"Alternate picking ladder", desc:"Metronome on, start slow and clean, add 4 bpm each clean pass through.", bpm:70 },
   { cat:"Technique", name:"String skipping", desc:"Clean jumps across non-adjacent strings without brushing the ones in between.", bpm:72 },
