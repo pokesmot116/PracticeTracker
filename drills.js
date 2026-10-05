@@ -69,3 +69,37 @@ export const DRILLS = [
   { cat:"Ear training", name:"Sing then play", desc:"Sing a short phrase from memory, then find it on the fretboard by ear.", bpm:null },
   { cat:"Ear training", name:"Transcribe 4 bars", desc:"Pick four bars from a favorite track and work it out entirely by ear.", bpm:null },
 ];
+
+// =============================================================================
+// ROUTINES
+// Named sequences of drills (by exact `name` above) that the app can step
+// through one at a time, auto-advancing to the next drill each time a
+// session is saved. Add or reorder routines here — no app-logic changes
+// needed. `drills` entries must match a DRILLS[].name exactly.
+// =============================================================================
+export const ROUTINES = [
+  {
+    name: "Quick Daily Tune-Up",
+    drills: ["Spider exercise", "Landmark shapes 1 & 4", "Call and response", "Sing then play"]
+  },
+  {
+    name: "CAGED Deep Dive",
+    drills: ["Pentatonic enclosures", "CAGED shape mapping", "EDA shape simplification", "CAGED arpeggio connector", "CAGED → pentatonic overlay", "One key, five CAGED shapes"]
+  },
+  {
+    name: "Pentatonic Mastery",
+    drills: ["Pentatonic groups of 3", "Landmark shapes 1 & 4", "Diagonal extension — Shape 1", "Diagonal extension — Shape 4", "String bending targets", "Looper solo"]
+  },
+  {
+    name: "Neo-Soul / Soejima Session",
+    drills: ["Every-other-note pentatonic", "Chord-to-line blur", "Arpeggio-over-pentatonic overlay", "Behind-the-beat phrasing", "Space and restraint", "Vocal bend and fade", "Transcribe a Soejima lick"]
+  },
+  {
+    name: "Jazz Standard Workout",
+    drills: ["Pentatonic enclosures", "Autumn Leaves — head", "Autumn Leaves — ii–V–I", "Extended voicing voice-leading", "Neo-soul voicings", "Transcribe 4 bars"]
+  },
+  {
+    name: "Full Session",
+    drills: ["Spider exercise", "Landmark shapes 1 & 4", "CAGED arpeggio connector", "Target the chord tones", "Tone-roll comparison", "Compressed vs. dry dynamics", "Autumn Leaves — head", "Strat setup check"]
+  },
+];
